@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChartExport } from '../../ui/ChartExport';
 import {
   applyFilter,
   availableTagSources,
@@ -34,6 +35,7 @@ const FILTER_KEYS = ['setup', 'timeframe', 'management_style', 'trading_session'
 
 export function PerformanceOverview({ trades: repo }: { trades: TradeRepository }) {
   const [all, setAll] = useState<StandardTrade[] | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [preset, setPreset] = useState<RangePreset>('all');
   const [dims, setDims] = useState<Record<string, string>>({});
   const [groupBy, setGroupBy] = useState('setup');
@@ -123,9 +125,10 @@ export function PerformanceOverview({ trades: repo }: { trades: TradeRepository 
           <section className="panel">
             <header className="panel__head">
               <h3 className="section-title">Equity curve · cumulative R</h3>
+              <ChartExport target={chartRef} title="Equity curve · cumulative R" subtitle={`${trades.length} trades · ${fmtR(perf.netR)}`} />
               <span className="panel__aside muted">{trades.length} trades</span>
             </header>
-            <div className="panel__body">
+            <div className="panel__body" ref={chartRef}>
               <EquityCurve points={equity} height={240} ariaLabel={`Cumulative R for the filtered trades, ending at ${fmtR(perf.netR)}`} />
             </div>
           </section>

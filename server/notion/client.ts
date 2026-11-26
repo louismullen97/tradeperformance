@@ -28,6 +28,7 @@ export interface NotionClientOptions {
 }
 
 const BASE = 'https://api.notion.com/v1';
+type Method = 'GET' | 'POST' | 'PATCH';
 
 /**
  * Minimal Notion REST client (no SDK dependency). Requests run through a
@@ -49,16 +50,29 @@ export class NotionClient {
     this.sleep = options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
-  request<T>(method: 'GET' | 'POST', path: string, body?: unknown, query?: Record<string, string[]>): Promise<T> {
-    const run = () => this.send<T>(method, path, body, query);
+  request<T>(method: Method, path: string, body?: unknown, query?: Record<string, string[]>): Promise<T> {
+    return this.enqueue(() => this.send<T>(method, path, body, query));
+  }
+
+  /** Sends a file's bytes to a pending file upload (multipart; never retried on 5xx). */
+  sendFile(fileUploadId: string, data: Blob, filename: string) {
+    const form = new FormData();
+    form.append('file', data, filename);
+    return this.enqueue(() => this.send<{ id: string; status: string }>('POST', `/file_uploads/${encodeURIComponent(fileUploadId)}/send`, form));
+  }
+
+  private enqueue<T>(run: () => Promise<T>): Promise<T> {
     const result = this.queue.then(run, run);
     this.queue = result.catch(() => undefined);
     return result;
   }
 
-  private async send<T>(method: 'GET' | 'POST', path: string, body?: unknown, query?: Record<string, string[]>): Promise<T> {
+  private async send<T>(method: Method, path: string, body?: unknown, query?: Record<string, string[]>): Promise<T> {
     const url = new URL(BASE + path);
     for (const [k, values] of Object.entries(query ?? {})) for (const v of values) url.searchParams.append(k, v);
+    const multipart = body instanceof FormData;
+    // Reads (GET, search, query) are safe to retry after a server error; writes are not.
+    const readOnly = method === 'GET' || /\/(search|query)$/.test(path);
 
     for (let attempt = 0; ; attempt++) {
       const wait = this.lastStart + this.minIntervalMs - Date.now();
@@ -70,9 +84,9 @@ export class NotionClient {
         headers: {
           Authorization: `Bearer ${this.options.token}`,
           'Notion-Version': NOTION_VERSION,
-          ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+          ...(body !== undefined && !multipart ? { 'Content-Type': 'application/json' } : {}),
         },
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: body === undefined ? undefined : multipart ? (body as FormData) : JSON.stringify(body),
       });
 
       if (res.ok) return (await res.json()) as T;
@@ -82,11 +96,11 @@ export class NotionClient {
         message?: string;
         additional_data?: { rate_limit_reason?: string };
       };
-      // Search and query are read-only, so POST retries are safe for this client.
+      // 429/529 mean the request was not processed, so even writes can be retried.
       const retryable =
         (res.status === 429 && payload.additional_data?.rate_limit_reason !== 'public_api_request_blocked') ||
         res.status === 529 ||
-        [500, 502, 503, 504].includes(res.status);
+        (readOnly && [500, 502, 503, 504].includes(res.status));
 
       if (!retryable || attempt >= this.maxRetries) {
         throw new NotionApiError(res.status, payload.code ?? 'http_error', payload.message ?? `Notion returned HTTP ${res.status}`);

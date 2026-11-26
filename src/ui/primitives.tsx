@@ -26,6 +26,10 @@ const PATHS = {
   menu: 'M2.5 4.5h11M2.5 8h11M2.5 11.5h11',
   layers: 'M8 2l6 3-6 3-6-3zM2 8l6 3 6-3M2 11l6 3 6-3',
   search: 'M7 12A5 5 0 107 2a5 5 0 000 10zM14 14l-3.5-3.5',
+  image: 'M2.5 3.5h11v9h-11zM2.5 10.5l3-3 3 3 2-2 3 3M10.5 6.2h.01',
+  download: 'M8 2.5v8M5 7.5l3 3 3-3M2.5 10.5v3h11v-3',
+  copy: 'M5.5 5.5h7v8h-7zM3.5 10.5v-8h7',
+  send: 'M14 2L7 9M14 2l-4.5 12-2.5-5-5-2.5z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -81,7 +81,7 @@ export function App({
       connection={{
         live: !demo,
         title: demo ? 'Notion · Demo workspace' : `Notion · ${status.workspace ?? 'Connected'}`,
-        subtitle: demo ? 'Demo data' : 'Live · read-only',
+        subtitle: demo ? 'Demo data' : 'Live',
       }}
     >
       {view === 'imports' && demo && <ModeBanner status={status} />}
@@ -91,7 +91,7 @@ export function App({
       {view === 'performance' && (sub === 'setup' || sub === 'timeframe') && <DimensionPerformance key={sub} trades={trades} sub={sub} />}
       {view === 'performance' && sub === 'tags' && <TagsPerformance trades={trades} />}
       {view === 'performance' && sub === 'edge' && <EdgePage trades={trades} />}
-      {view === 'review' && <ReviewPage key={period} trades={trades} period={period} />}
+      {view === 'review' && <ReviewPage key={period} trades={trades} period={period} flow={flow} publishing={{ live: !demo, connector: services.connector, apiBase: '/api/notion' }} />}
       {view === 'psychology' && psych === 'overview' && <PsychologyPage trades={trades} />}
       {view === 'psychology' && psych === 'flow' && <FlowZonePage trades={trades} flow={flow} />}
       {view === 'missed' && <MissedTradesPage trades={trades} />}

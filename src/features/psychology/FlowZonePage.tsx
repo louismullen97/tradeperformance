@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChartExport } from '../../ui/ChartExport';
 import { presetRange, type RangePreset } from '../../domain/analytics/analytics';
 import {
   dailyFlow,
@@ -58,6 +59,7 @@ function TagImpact({ title, rows, empty }: { title: string; rows: { tag: string;
 
 export function FlowZonePage({ trades: tradeRepo, flow: flowRepo }: { trades: TradeRepository; flow: FlowRepository }) {
   const [entriesAll, setEntries] = useState<FlowEntry[] | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [tradesAll, setTrades] = useState<StandardTrade[]>([]);
   const [preset, setPreset] = useState<RangePreset>('all');
 
@@ -131,8 +133,9 @@ export function FlowZonePage({ trades: tradeRepo, flow: flowRepo }: { trades: Tr
                 <h2 className="section-title">Daily flow</h2>
                 <p className="section-sub">Average of each day's check-ins.</p>
               </div>
+              <ChartExport target={chartRef} title="Daily flow" subtitle="Average flow score (out of 10) per day" />
             </header>
-            <div className="panel__body">
+            <div className="panel__body" ref={chartRef}>
               <LineChart
                 height={220}
                 startAtZero={false}

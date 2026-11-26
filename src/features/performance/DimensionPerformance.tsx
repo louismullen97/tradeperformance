@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChartExport } from '../../ui/ChartExport';
 import {
   applyFilter,
   dailyEquity,
@@ -57,6 +58,7 @@ function Highlight({ title, row, foot, onPick, picked }: { title: string; row: B
 export function DimensionPerformance({ trades: repo, sub }: { trades: TradeRepository; sub: 'setup' | 'timeframe' }) {
   const dim = getDimension(sub);
   const [all, setAll] = useState<StandardTrade[] | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [preset, setPreset] = useState<RangePreset>('all');
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -116,6 +118,7 @@ export function DimensionPerformance({ trades: repo, sub }: { trades: TradeRepos
           <section className="panel">
             <header className="panel__head panel__head--wrap">
               <h3 className="section-title">Equity curve · all trades vs one {noun}</h3>
+              <ChartExport target={chartRef} title={picked ? `Equity curve · all trades vs ${picked}` : 'Equity curve · all trades'} subtitle={PRESETS.find((p) => p.key === preset)?.label} />
               <div className="pills" role="radiogroup" aria-label={`Compare a ${noun}`}>
                 <button role="radio" aria-checked={picked === null} className={`pill ${picked === null ? 'is-active' : ''}`} onClick={() => setPicked(null)}>
                   All only
@@ -127,7 +130,7 @@ export function DimensionPerformance({ trades: repo, sub }: { trades: TradeRepos
                 ))}
               </div>
             </header>
-            <div className="panel__body">
+            <div className="panel__body" ref={chartRef}>
               <LineChart
                 series={series}
                 format={(v) => (v === 0 ? '0' : `${v > 0 ? '+' : ''}${Number(v.toFixed(2))}R`)}

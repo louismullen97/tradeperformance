@@ -1591,3 +1591,116 @@ button.highlight:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── ASR dialog ───────────────────────────────────────────────────────── */
+.dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--text-1);
+  box-shadow: var(--shadow-lg);
+}
+.dialog::backdrop {
+  background: rgba(16, 16, 20, 0.36);
+}
+.dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+}
+.dialog__body {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-5) var(--space-5);
+}
+.dialog__fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.dialog__checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+.dialog__checks > li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+.dialog__checks > li > svg {
+  margin-top: 3px;
+  flex: none;
+  color: var(--gain);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  color: var(--text-1);
+}
+.check input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.dialog__done {
+  justify-items: start;
+}
+.dialog__done-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--success-soft);
+  color: var(--success);
+}
+.dialog__done .dialog__actions {
+  width: 100%;
+}
+.notice {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+.notice > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.notice--warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.notice--error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.period-nav__actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-2);
+}

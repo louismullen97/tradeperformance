@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { dailyStats, performance } from '../../domain/analytics/analytics';
 import type { GoalRepository } from '../../domain/goals/goals';
 import type { TradeRepository } from '../../domain/trades/repository';
@@ -9,6 +9,7 @@ import type { StandardTrade } from '../../domain/trades/types';
 import { groupByLocalDate, type NewsEvent } from '../../domain/news/types';
 import { fetchNews } from '../../sources/news/newsClient';
 import { EquityCurve } from '../../ui/charts/EquityCurve';
+import { ChartExport } from '../../ui/ChartExport';
 import { PageHeader } from '../../ui/PageHeader';
 import { Badge, fmtDate, fmtPct, fmtR, fmtWinRate, Icon, signTone, Stat } from '../../ui/primitives';
 import { fmtMetric, metricValue, TradeCalendar, type CalendarMetric } from './TradeCalendar';
@@ -26,6 +27,7 @@ function initialMonth(trades: StandardTrade[]): { year: number; month: number } 
 
 export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository; goals: GoalRepository }) {
   const [trades, setTrades] = useState<StandardTrade[] | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [ym, setYm] = useState<{ year: number; month: number } | null>(null);
   const [metric, setMetric] = useState<CalendarMetric>('r');
   const [selected, setSelected] = useState<string | null>(null);
@@ -137,11 +139,12 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
         <section className="panel">
           <header className="panel__head">
             <h3 className="section-title">Equity curve · cumulative R</h3>
+            <ChartExport target={chartRef} title="Equity curve · cumulative R" subtitle={`${perf.count} trades · ${fmtR(perf.netR)}`} />
             <a className="panel__aside link" href="#/performance">
               Analyse <Icon name="arrowRight" size={12} />
             </a>
           </header>
-          <div className="panel__body">
+          <div className="panel__body" ref={chartRef}>
             <EquityCurve points={equity} ariaLabel={`Cumulative R over ${equity.length} trades, ending at ${fmtR(perf.netR)}`} />
           </div>
         </section>

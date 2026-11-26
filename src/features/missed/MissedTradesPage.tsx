@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { ChartExport } from '../../ui/ChartExport';
 import { breakdown, dailyEquity, performance } from '../../domain/analytics/analytics';
 import { getDimension } from '../../domain/analytics/dimensions';
 import type { TradeRepository } from '../../domain/trades/repository';
@@ -15,6 +16,7 @@ const POTENTIAL_COLOR = 'var(--series-2)';
 
 export function MissedTradesPage({ trades: repo }: { trades: TradeRepository }) {
   const [all, setAll] = useState<StandardTrade[] | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [groupBy, setGroupBy] = useState<'missed_reason' | 'setup'>('missed_reason');
   useEffect(() => void repo.list().then(setAll), [repo]);
 
@@ -76,8 +78,9 @@ export function MissedTradesPage({ trades: repo }: { trades: TradeRepository }) 
           <section className="panel">
             <header className="panel__head">
               <h3 className="section-title">Real vs potential equity · cumulative R</h3>
+              <ChartExport target={chartRef} title="Real vs potential equity · cumulative R" subtitle={`Real ${fmtR(real.netR)} · with missed trades ${fmtR(potential.netR)}`} />
             </header>
-            <div className="panel__body">
+            <div className="panel__body" ref={chartRef}>
               <LineChart
                 series={series}
                 format={(v) => (v === 0 ? '0' : `${v > 0 ? '+' : ''}${Number(v.toFixed(2))}R`)}

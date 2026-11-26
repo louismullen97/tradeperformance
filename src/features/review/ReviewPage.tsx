@@ -1,15 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { breakdown, dailyEquity, performance } from '../../domain/analytics/analytics';
 import { getDimension } from '../../domain/analytics/dimensions';
 import { psychologyTagsOf } from '../../domain/analytics/psychology';
 import { periodRange, shiftPeriod, PERIOD_NOUN, type ReviewPeriod } from '../../domain/analytics/review';
+import type { FlowEntry, FlowRepository } from '../../domain/flow/flow';
+import { buildAsr } from '../../domain/review/asr';
+import type { DataSourceConnector } from '../../domain/source/types';
 import type { TradeRepository } from '../../domain/trades/repository';
 import { isMissed } from '../../domain/trades/status';
 import type { StandardTrade } from '../../domain/trades/types';
-import { LineChart } from '../../ui/charts/LineChart';
+import { LineChart, type LineSeries } from '../../ui/charts/LineChart';
+import { ChartExport } from '../../ui/ChartExport';
 import { PageHeader } from '../../ui/PageHeader';
 import { fmtDate, fmtPct, fmtR, fmtWinRate, Icon, signTone, Stat } from '../../ui/primitives';
 import { BreakdownTable } from '../performance/BreakdownTable';
+import { AsrDialog, type AsrChart } from './AsrDialog';
+
+export interface ReviewPublishing {
+  live: boolean;
+  connector: DataSourceConnector;
+  apiBase: string;
+}
 
 const TABS = [
   { key: 'week', label: 'Weekly', href: '#/review/week' },
@@ -94,9 +105,27 @@ function TagList({ title, items, empty }: { title: string; items: [string, numbe
   );
 }
 
-export function ReviewPage({ trades: repo, period }: { trades: TradeRepository; period: ReviewPeriod }) {
+const rFormat = (v: number) => (v === 0 ? '0' : `${v > 0 ? '+' : ''}${Number(v.toFixed(2))}R`);
+
+export function ReviewPage({
+  trades: repo,
+  period,
+  flow: flowRepo,
+  publishing,
+}: {
+  trades: TradeRepository;
+  period: ReviewPeriod;
+  flow?: FlowRepository;
+  publishing: ReviewPublishing;
+}) {
   const [all, setAll] = useState<StandardTrade[] | null>(null);
   const [anchor, setAnchor] = useState<string | null>(null);
+  const [flow, setFlow] = useState<FlowEntry[]>([]);
+  const [asrOpen, setAsrOpen] = useState(false);
+  const equityRef = useRef<HTMLDivElement>(null);
+  const missedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => void flowRepo?.list().then(setFlow), [flowRepo]);
 
   useEffect(() => {
     void repo.list().then((list) => {
@@ -120,6 +149,14 @@ export function ReviewPage({ trades: repo, period }: { trades: TradeRepository; 
   const perf = useMemo(() => performance(taken), [taken]);
   const prev = useMemo(() => performance(prevTaken), [prevTaken]);
   const setups = useMemo(() => breakdown(taken, getDimension('setup')), [taken]);
+  const missedSeries = useMemo((): LineSeries[] => {
+    const realPts = dailyEquity(taken).map((p) => ({ date: p.date, value: p.r }));
+    const potentialPts = dailyEquity([...taken, ...missed]).map((p) => ({ date: p.date, value: p.r }));
+    return [
+      { key: 'real', label: 'Real (taken)', color: 'var(--chart-1)', points: realPts },
+      { key: 'potential', label: 'With missed trades', color: 'var(--chart-3)', points: potentialPts },
+    ];
+  }, [taken, missed]);
 
   if (!all || !range || !anchor) return null;
   const hasPrev = prevTaken.length > 0;
@@ -129,6 +166,13 @@ export function ReviewPage({ trades: repo, period }: { trades: TradeRepository; 
   const missedR = missed.filter((t) => t.result_r > 0).reduce((a, t) => a + t.result_r, 0);
   const noun = PERIOD_NOUN[period];
   const isCurrent = range.start <= todayIso() && todayIso() <= range.end;
+  const potentialNet = missedSeries[1].points.at(-1)?.value ?? 0;
+  const asrCharts: AsrChart[] = [
+    ...(taken.length ? [{ key: 'equity', label: 'Equity curve', ref: equityRef, title: `Equity · ${range.label}`, subtitle: `Cumulative R · ${fmtR(perf.netR)}` }] : []),
+    ...(missed.length
+      ? [{ key: 'missed', label: 'Real vs missed equity', ref: missedRef, title: `Real vs missed equity · ${range.label}`, subtitle: `Real ${fmtR(perf.netR)} · with missed trades ${fmtR(potentialNet)}` }]
+      : []),
+  ];
 
   return (
     <div className="page">
@@ -147,7 +191,25 @@ export function ReviewPage({ trades: repo, period }: { trades: TradeRepository; 
             This {noun}
           </button>
         )}
+        {(taken.length > 0 || missed.length > 0) && (
+          <div className="period-nav__actions">
+            <button className="btn btn--sm btn--primary" onClick={() => setAsrOpen(true)}>
+              <Icon name="send" size={14} /> Create ASR in Notion
+            </button>
+          </div>
+        )}
       </div>
+
+      <AsrDialog
+        open={asrOpen}
+        onClose={() => setAsrOpen(false)}
+        live={publishing.live}
+        connector={publishing.connector}
+        apiBase={publishing.apiBase}
+        periodLabel={range.label}
+        charts={asrCharts}
+        build={(images) => buildAsr({ period, range, taken, prevTaken, missed, flow, images })}
+      />
 
       {taken.length === 0 && missed.length === 0 ? (
         <div className="empty-state panel">
@@ -172,17 +234,35 @@ export function ReviewPage({ trades: repo, period }: { trades: TradeRepository; 
           <section className="panel">
             <header className="panel__head">
               <h2 className="section-title">Equity this {noun}</h2>
+              <ChartExport target={equityRef} title={`Equity · ${range.label}`} subtitle={`Cumulative R · ${fmtR(perf.netR)}`} />
               <span className="panel__aside muted">{perf.tradingDays} trading days</span>
             </header>
-            <div className="panel__body">
+            <div className="panel__body" ref={equityRef}>
               <LineChart
                 height={220}
                 series={[{ key: 'r', label: 'Cumulative R', color: 'var(--chart-1)', points: dailyEquity(taken).map((p) => ({ date: p.date, value: p.r })) }]}
-                format={(v) => (v === 0 ? '0' : `${v > 0 ? '+' : ''}${Number(v.toFixed(2))}R`)}
+                format={rFormat}
                 ariaLabel={`Cumulative R for ${range.label}: ${fmtR(perf.netR)}`}
               />
             </div>
           </section>
+
+          {missed.length > 0 && (
+            <section className="panel">
+              <header className="panel__head">
+                <h2 className="section-title">Real vs missed equity</h2>
+                <ChartExport target={missedRef} title={`Real vs missed equity · ${range.label}`} subtitle={`Real ${fmtR(perf.netR)} · with missed trades ${fmtR(potentialNet)}`} />
+              </header>
+              <div className="panel__body" ref={missedRef}>
+                <LineChart
+                  height={220}
+                  series={missedSeries}
+                  format={rFormat}
+                  ariaLabel={`Real equity ${fmtR(perf.netR)} versus equity including missed trades ${fmtR(potentialNet)} for ${range.label}`}
+                />
+              </div>
+            </section>
+          )}
 
           <div className="grid-2">
             <TradeList title="Best trades" trades={best} />
