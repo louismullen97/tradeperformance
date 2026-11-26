@@ -12,7 +12,7 @@ export interface FieldDefinition {
   valueKind: FieldValueKind;
   group: FieldGroup;
   /** Semantic unit; drives conversions such as Notion percent rescaling. */
-  unit?: 'percent' | 'r_multiple' | 'price';
+  unit?: 'percent' | 'r_multiple' | 'price' | 'currency';
   /** Alternative names users commonly give this column. Used only for suggestions. */
   aliases: string[];
   /**
@@ -22,5 +22,7 @@ export interface FieldDefinition {
   vocabulary?: Record<string, string[]>;
   /** Plausible range; values outside it are flagged for attention, not rejected. */
   plausibleRange?: { min?: number; max?: number; exclusiveMin?: boolean };
+  /** Value normalisation applied after coercion. */
+  normalise?: 'instrument';
   example: string;
 }

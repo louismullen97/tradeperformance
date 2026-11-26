@@ -11,6 +11,27 @@ export const CONFIDENT_THRESHOLD = 0.85;
 
 const TYPE_WEIGHT: Record<Compatibility, number> = { native: 1, convertible: 0.8, incompatible: 0 };
 
+/**
+ * How well a number column's display format fits the field's unit. A Notion
+ * percent-format column is strong evidence for a percentage field and against
+ * an R or money field; a currency column is evidence against percentages.
+ * Plain numbers are ambiguous, so they keep percent matches in "review".
+ */
+export function unitAffinity(field: FieldDefinition, property: SourceProperty): number {
+  if (property.type !== 'number' || !field.unit) return 1;
+  const fmt = property.numberFormat ?? 'number';
+  switch (field.unit) {
+    case 'percent':
+      return fmt === 'percent' ? 1 : fmt === 'currency' ? 0.3 : 0.84;
+    case 'r_multiple':
+      return fmt === 'number' ? 1 : 0.4;
+    case 'currency':
+      return fmt === 'percent' ? 0.3 : 1;
+    default:
+      return fmt === 'percent' ? 0.5 : 1;
+  }
+}
+
 export interface Candidate {
   property: SourceProperty;
   compatibility: Compatibility;
@@ -30,7 +51,7 @@ export function rankCandidates(field: FieldDefinition, properties: SourcePropert
         compatibility,
         nameScore,
         matchedAlias,
-        score: nameScore * TYPE_WEIGHT[compatibility],
+        score: nameScore * TYPE_WEIGHT[compatibility] * unitAffinity(field, property),
       };
     })
     .sort((a, b) => b.score - a.score || a.property.name.localeCompare(b.property.name));

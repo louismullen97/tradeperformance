@@ -100,7 +100,22 @@ function round(n: number, dp = 6) {
   return Math.round(n * f) / f;
 }
 
+/**
+ * Canonical instrument code: FX/metal pairs written as "GBP AUD", "gbp/aud" or
+ * "GBP-AUD" become "GBPAUD". Anything else (indices like "S&P500") is just
+ * upper-cased and trimmed.
+ */
+export function normaliseInstrument(raw: string): string {
+  const s = raw.trim().toUpperCase().replace(/\s+/g, ' ');
+  const pair = /^([A-Z]{3})\s*[/\-_. ]?\s*([A-Z]{3})$/.exec(s);
+  return pair ? pair[1] + pair[2] : s;
+}
+
 function applyVocabulary(field: FieldDefinition, raw: string): CoerceResult {
+  if (field.normalise === 'instrument') {
+    const value = normaliseInstrument(raw);
+    return { status: 'ok', value, converted: value !== raw };
+  }
   if (!field.vocabulary) return { status: 'ok', value: raw.trim(), converted: false };
   const needle = raw.trim().toLowerCase();
   for (const [canonical, synonyms] of Object.entries(field.vocabulary)) {

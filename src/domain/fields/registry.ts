@@ -24,7 +24,8 @@ export const TRADE_FIELDS: readonly FieldDefinition[] = [
     required: true,
     valueKind: 'string',
     group: 'core',
-    aliases: ['Pair', 'Currency Pair', 'Instrument', 'Symbol', 'Ticker', 'Market', 'Asset'],
+    aliases: ['Pair', 'Pairs', 'Currency Pair', 'Instrument', 'Symbol', 'Ticker', 'Market', 'Asset'],
+    normalise: 'instrument',
     example: 'EURUSD',
   },
   {
@@ -34,7 +35,7 @@ export const TRADE_FIELDS: readonly FieldDefinition[] = [
     required: true,
     valueKind: 'string',
     group: 'core',
-    aliases: ['Setup', 'Strategy', 'Trade Setup', 'Model', 'Playbook', 'Pattern'],
+    aliases: ['Setup', 'Setup Type', 'Strategy', 'Trade Setup', 'Model', 'Playbook', 'Pattern'],
     example: 'London breakout',
   },
   {
@@ -69,12 +70,23 @@ export const TRADE_FIELDS: readonly FieldDefinition[] = [
     valueKind: 'number',
     group: 'core',
     unit: 'percent',
-    aliases: ['Result %', 'P/L %', 'Return %', 'PnL %', 'Profit %', 'Return', 'Gain %', 'P&L %'],
+    aliases: ['Result %', 'P/L %', 'Return %', 'PnL %', 'Profit %', 'Return', 'Gain %', 'P&L %', 'Result'],
     plausibleRange: { min: -50, max: 200 },
     example: '2.4',
   },
 
   // ── Optional ─────────────────────────────────────────────────────
+  {
+    key: 'profit_loss_amount',
+    label: 'P/L (amount)',
+    description: 'Profit or loss in account currency.',
+    required: false,
+    valueKind: 'number',
+    group: 'core',
+    unit: 'currency',
+    aliases: ['PnL', 'P&L', 'P/L', 'Profit', 'Profit/Loss', 'Net P/L', 'Net PnL', 'Profit Loss', 'P/L $', 'PnL $', 'Amount'],
+    example: '750',
+  },
   {
     key: 'direction',
     label: 'Direction',
@@ -93,7 +105,7 @@ export const TRADE_FIELDS: readonly FieldDefinition[] = [
     required: false,
     valueKind: 'string',
     group: 'context',
-    aliases: ['Timeframe', 'TF', 'Time Frame', 'Entry TF', 'Chart'],
+    aliases: ['Timeframe', 'TF', 'Time Frame', 'Entry TF', 'Entry Timeframe', 'Chart'],
     example: 'M15',
   },
   {

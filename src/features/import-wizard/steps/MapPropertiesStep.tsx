@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { FieldDefinition } from '../../../domain/fields/types';
 import { VALUE_KIND_LABEL } from '../../../domain/mapping/compatibility';
 import type { ReconcileChange } from '../../../domain/mapping/reconcile';
+import { plausibilityWarning } from '../../../domain/mapping/plausibility';
 import { rankCandidates, SUGGEST_THRESHOLD } from '../../../domain/mapping/suggest';
 import type { FieldMappingState, MappingConfig } from '../../../domain/mapping/types';
 import type { SourceProperty, SourceRecord } from '../../../domain/source/types';
@@ -96,6 +97,10 @@ function MappingRow({ field, state, config, properties, records, fields, onChang
   };
 
   const samples = selectedProperty ? samplesFor(records, selectedProperty.id) : [];
+  const plausibility = useMemo(
+    () => (selectedProperty ? plausibilityWarning(field, selectedProperty, records) : null),
+    [field, selectedProperty, records],
+  );
   const selectId = `map-${field.key}`;
 
   return (
@@ -195,8 +200,13 @@ function MappingRow({ field, state, config, properties, records, fields, onChang
         )}
       </div>
 
-      {state.messages.length > 0 && (
+      {(state.messages.length > 0 || plausibility) && (
         <ul className="map-row__messages">
+          {plausibility && (
+            <li className="map-row__warning">
+              <Icon name="alert" size={12} /> {plausibility}
+            </li>
+          )}
           {state.messages.map((m) => (
             <li key={m}>{m}</li>
           ))}

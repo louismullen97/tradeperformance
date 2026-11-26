@@ -24,7 +24,14 @@ export interface TradeSummary {
   profitFactor: number | null;
   /** Sum of per-trade P/L % (simple, not compounded). */
   netPl: number;
+  /** Sum of P/L amounts in account currency; null when no trade records one. */
+  netAmount: number | null;
   avgRisk: number | null;
+}
+
+export function amountOf(t: StandardTrade): number | null {
+  const v = t.optional.profit_loss_amount;
+  return typeof v === 'number' ? v : null;
 }
 
 const round = (n: number, dp = 4) => Math.round(n * 10 ** dp) / 10 ** dp;
@@ -50,6 +57,9 @@ export function summarise(trades: StandardTrade[]): TradeSummary {
     avgLossR: opt(mean(losses.map((t) => t.result_r))),
     profitFactor: grossLoss > 0 ? round(grossWin / grossLoss) : null,
     netPl: round(trades.reduce((a, t) => a + t.profit_loss_percentage, 0)),
+    netAmount: trades.some((t) => amountOf(t) !== null)
+      ? round(trades.reduce((a, t) => a + (amountOf(t) ?? 0), 0), 2)
+      : null,
     avgRisk: opt(mean(trades.map((t) => t.risk_percentage))),
   };
 }

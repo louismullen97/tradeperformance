@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { TRADE_FIELDS } from '../../domain/fields/registry';
 import type { TradeRepository } from '../../domain/trades/repository';
-import { outcomeOf, summarise, type Outcome } from '../../domain/trades/summary';
+import { amountOf, outcomeOf, summarise, type Outcome } from '../../domain/trades/summary';
 import type { StandardTrade, TradeFieldValue } from '../../domain/trades/types';
 import { Badge, fmtDate, fmtPct, fmtR, fmtRisk, Icon, signTone, Stat } from '../../ui/primitives';
 
@@ -16,6 +16,9 @@ const optionalText = (t: StandardTrade, key: string) => {
   const v = t.optional[key];
   return typeof v === 'string' ? v : null;
 };
+
+const amountFmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 });
+const fmtAmount = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : ''}${amountFmt.format(n)}`);
 
 const uniq = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => !!x))].sort();
 
@@ -111,7 +114,8 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
     );
   }
 
-  const optionalKeys = TRADE_FIELDS.filter((f) => !f.required && f.key !== 'trade_notes').map((f) => f);
+  const optionalKeys = TRADE_FIELDS.filter((f) => !f.required && !['trade_notes', 'profit_loss_amount'].includes(f.key));
+  const hasAmount = trades.some((t) => amountOf(t) !== null);
 
   return (
     <div className="journal">
@@ -134,7 +138,12 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
           }
         />
         <Stat label="Net R" value={fmtR(s.netR)} tone={s.netR > 0 ? 'positive' : s.netR < 0 ? 'negative' : undefined} foot={`Avg ${fmtR(s.avgR)} per trade`} />
-        <Stat label="Net P/L" value={fmtPct(s.netPl)} tone={s.netPl > 0 ? 'positive' : s.netPl < 0 ? 'negative' : undefined} foot={`Avg risk ${fmtRisk(s.avgRisk)}`} />
+        <Stat
+          label="Net P/L"
+          value={fmtPct(s.netPl)}
+          tone={s.netPl > 0 ? 'positive' : s.netPl < 0 ? 'negative' : undefined}
+          foot={s.netAmount !== null ? `${fmtAmount(s.netAmount)} · avg risk ${fmtRisk(s.avgRisk)}` : `Avg risk ${fmtRisk(s.avgRisk)}`}
+        />
         <Stat
           label="Profit factor"
           value={s.profitFactor === null ? '—' : s.profitFactor.toFixed(2)}
@@ -196,7 +205,8 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
                 <th>Session</th>
                 {header('risk_percentage', 'Risk')}
                 {header('result_r', 'Result')}
-                {header('profit_loss_percentage', 'P/L')}
+                {header('profit_loss_percentage', 'P/L %')}
+                {hasAmount && <th className="num">P/L</th>}
                 <th>Outcome</th>
                 <th aria-label="Details" />
               </tr>
@@ -218,6 +228,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
                       <td className="num">{fmtRisk(t.risk_percentage)}</td>
                       <td className={`num ${signTone(t.result_r)}`}>{fmtR(t.result_r)}</td>
                       <td className={`num ${signTone(t.profit_loss_percentage)}`}>{fmtPct(t.profit_loss_percentage)}</td>
+                      {hasAmount && <td className={`num ${signTone(amountOf(t))}`}>{fmtAmount(amountOf(t))}</td>}
                       <td>
                         <Badge tone={OUTCOME_TONE[outcome]}>{OUTCOME_LABEL[outcome]}</Badge>
                       </td>
@@ -237,7 +248,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
                     </tr>
                     {open && (
                       <tr className="detail-row">
-                        <td colSpan={10}>
+                        <td colSpan={hasAmount ? 11 : 10}>
                           <div className="trade-detail">
                             <div>
                               <div className="eyebrow">Notes</div>
