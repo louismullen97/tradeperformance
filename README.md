@@ -26,6 +26,29 @@ OAuth (a "Connect Notion" button for other users) is the next step; it plugs in 
 
 > Behind an HTTPS proxy, run Node with `NODE_USE_ENV_PROXY=1` — Node's built-in fetch ignores `HTTPS_PROXY`.
 
+## Design system
+
+All styling lives in `src/styles/` and is driven by tokens — never hard-code colours or sizes:
+
+| File | Contents |
+|---|---|
+| `tokens.css` | Colour roles (surfaces, text 1–4, accent, gain/loss + soft tints, charts), type scale, 4px spacing scale, radii, elevation, motion, layout |
+| `base.css` | Reset, Inter with tabular numerals, type roles (`page-title`, `section-title`, `label`), number tones |
+| `layout.css` | Shell, sidebar, top bar, breadcrumbs, `PageHeader`, sub-navigation |
+| `components.css` | Buttons, inputs, filters, segmented/tabs, pills, badges, panels, metric strip, tables, charts, tooltips, legends |
+| `features.css` | Calendar, goals, performance, review, journal, import wizard |
+
+New pages: use `<PageHeader>` (with `tabs` for sub-pages), `<div className="metrics">` + `<Stat>` for KPIs,
+`.panel` for grouped content, and `.table` for data. Gain/loss colours are validated for colour-vision
+deficiency; figures always carry a sign as well.
+
+## Economic news
+
+The dashboard calendar marks days with high-impact news (red dot). `server/news` fetches ForexFactory's
+free weekly feed (`nfs.faireconomy.media`) at most hourly and accumulates every week it sees in
+`.cache/news.json`, so history builds up from the first run. A paid provider with full history can
+implement `NewsProvider` later.
+
 ## Architecture
 
 ```

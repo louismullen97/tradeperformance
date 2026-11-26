@@ -5,6 +5,7 @@ import { takenOnly } from '../../domain/trades/status';
 import { amountOf, outcomeOf, summarise, type Outcome } from '../../domain/trades/summary';
 import type { StandardTrade, TradeFieldValue } from '../../domain/trades/types';
 import { FilterSelect } from '../../ui/FilterSelect';
+import { PageHeader } from '../../ui/PageHeader';
 import { Badge, fmtAmount, fmtDate, fmtPct, fmtR, fmtRisk, Icon, signTone, Stat } from '../../ui/primitives';
 
 type SortKey = 'trade_date' | 'result_r' | 'profit_loss_percentage' | 'risk_percentage';
@@ -124,7 +125,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
     <div className="journal">
       <JournalHead count={trades.length} />
 
-      <div className="stat-row stat-row--5">
+      <div className="metrics metrics--5">
         <Stat label={filtered ? 'Trades (filtered)' : 'Trades'} value={s.count} foot={`${s.wins}W · ${s.losses}L · ${s.breakeven} BE`} />
         <Stat
           label="Win rate"
@@ -302,7 +303,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
 
       <section className="panel">
         <header className="panel__head">
-          <h3 className="eyebrow">Imported from</h3>
+          <h3 className="section-title">Imported from</h3>
           <a className="btn btn--xs" href="#/imports">
             <Icon name="refresh" size={12} /> Re-import / add journal
           </a>
@@ -337,17 +338,5 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
 }
 
 function JournalHead({ count }: { count: number }) {
-  return (
-    <header className="wizard__head">
-      <div className="wizard__title">
-        <span className="source-mark" aria-hidden="true">
-          <Icon name="book" size={18} />
-        </span>
-        <div>
-          <div className="eyebrow">Analyse · Journal</div>
-          <h1>Trade journal {count > 0 && <span className="muted h1-count">{count}</span>}</h1>
-        </div>
-      </div>
-    </header>
-  );
+  return <PageHeader title="Journal" meta={count > 0 ? count : undefined} description="Every trade you've taken, standardised from your Notion journal." />;
 }

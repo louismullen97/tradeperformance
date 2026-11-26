@@ -129,7 +129,7 @@ export function GoalsPanel({ trades, repo, today }: { trades: StandardTrade[]; r
   return (
     <section className="panel">
       <header className="panel__head">
-        <h3 className="eyebrow">Goals</h3>
+        <h3 className="section-title">Goals</h3>
         {!adding && (
           <button className="btn btn--xs" onClick={() => setAdding(true)}>
             <Icon name="sparkle" size={12} /> Add goal

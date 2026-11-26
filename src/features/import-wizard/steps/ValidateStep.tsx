@@ -130,7 +130,7 @@ export function ValidateStep({ wizard }: { wizard: ImportWizardModel }) {
         </div>
       </div>
 
-      <div className="stat-row stat-row--5">
+      <div className="metrics metrics--5">
         <Stat label="Records read" value={counts.total} foot={`From ${dataset.name}`} />
         <Stat label="Valid" value={counts.valid} tone="positive" foot="Ready to import" />
         <Stat label="Needs attention" value={counts.attention} tone={counts.attention ? 'warning' : undefined} foot="Importable — your call" />

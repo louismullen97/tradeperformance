@@ -39,6 +39,7 @@ const properties: SourceProperty[] = [
   P('mgmt', 'Management', 'select'),
   P('status', 'Trade Status', 'select'),
   P('reason', 'Missed Reason', 'select'),
+  P('psych', 'Psychology', 'multi_select'),
   P('pos', 'Positive tags', 'multi_select'),
   P('neg', 'Negative tags', 'multi_select'),
   P('struct', 'Structure Tags', 'multi_select'),
@@ -85,6 +86,7 @@ describe('journal with Result (%) and PnL (amount)', () => {
     expect(mapped('execution_rating')).toBe('Rating(1-5)');
     expect(mapped('trade_status')).toBe('Trade Status');
     expect(mapped('missed_reason')).toBe('Missed Reason');
+    expect(mapped('psychology_tags')).toBe('Psychology');
     const ev = evaluateMapping(config, properties, TRADE_FIELDS);
     expect(ev.fields.profit_loss_percentage.status).toBe('auto_matched');
     expect(ev.canProceed).toBe(true);

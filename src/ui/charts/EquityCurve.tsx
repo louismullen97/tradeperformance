@@ -23,7 +23,7 @@ function niceTicks(min: number, max: number, count = 4): number[] {
   return ticks;
 }
 
-const fmtR = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(2)}R`;
+const fmtR = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(2)}R`.replace(/^-/, '\u2212');
 const dateFmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const fmtDate = (iso: string) => dateFmt.format(new Date(`${iso}T00:00:00Z`));
 
@@ -91,7 +91,7 @@ export function EquityCurve({ points, height = 220, ariaLabel }: { points: Equit
           <g key={v}>
             <line x1={PAD.left} x2={width - PAD.right} y1={y(v)} y2={y(v)} className={v === 0 ? 'axis-base' : 'axis-grid'} />
             <text x={PAD.left - 8} y={y(v)} className="axis-label" textAnchor="end" dominantBaseline="middle">
-              {v === 0 ? '0' : `${v > 0 ? '+' : ''}${v}R`}
+              {v === 0 ? '0' : `${v > 0 ? '+' : ''}${v}R`.replace(/^-/, '\u2212')}
             </text>
           </g>
         ))}

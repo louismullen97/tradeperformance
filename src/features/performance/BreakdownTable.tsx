@@ -54,7 +54,7 @@ export function BreakdownTable({
                 {r.value}
                 {r.stats.count < MIN_TAG_SAMPLE && (
                   <span className="low-sample" title={`Fewer than ${MIN_TAG_SAMPLE} trades — treat as anecdotal`}>
-                    low sample
+                    Low sample
                   </span>
                 )}
               </td>

@@ -40,7 +40,7 @@ function valueAt(s: LineSeries, date: string): number | null {
 export function LineChart({
   series,
   height = 240,
-  format,
+  format: rawFormat,
   ariaLabel,
   baseline = 0,
   startAtZero = true,
@@ -54,6 +54,7 @@ export function LineChart({
   /** Prepend a zero point the day before the first point so the first move is visible. */
   startAtZero?: boolean;
 }) {
+  const format = (v: number) => rawFormat(v).replace(/^-/, '\u2212');
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
   const [hover, setHover] = useState<string | null>(null);

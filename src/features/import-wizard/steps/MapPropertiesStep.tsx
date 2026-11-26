@@ -275,7 +275,7 @@ export function MapPropertiesStep({ wizard }: { wizard: ImportWizardModel }) {
         </div>
       )}
 
-      <div className="stat-row">
+      <div className="metrics">
         <Stat
           label="Mandatory mapped"
           value={s.mandatoryMapped}
@@ -299,7 +299,7 @@ export function MapPropertiesStep({ wizard }: { wizard: ImportWizardModel }) {
 
       <section className="panel map-panel">
         <header className="panel__head">
-          <h3 className="eyebrow">
+          <h3 className="section-title">
             Mandatory fields <span className="count">{s.mandatoryMapped}/{s.mandatoryTotal}</span>
           </h3>
           <span className="panel__aside muted">Required by the analytics engine</span>
@@ -319,7 +319,7 @@ export function MapPropertiesStep({ wizard }: { wizard: ImportWizardModel }) {
         <header className="panel__head">
           <button className="disclosure" onClick={() => setShowOptional((v) => !v)} aria-expanded={showOptional}>
             <Icon name={showOptional ? 'chevronDown' : 'chevronRight'} />
-            <h3 className="eyebrow">
+            <h3 className="section-title">
               Optional fields <span className="count">{s.optionalMapped}/{s.optionalTotal}</span>
             </h3>
           </button>

@@ -1,61 +1,153 @@
+/*
+ * Tradelens design tokens — the single source of truth for colour, type,
+ * spacing, shape, elevation and motion. Components reference these roles,
+ * never raw values, so every page (current and future) stays consistent.
+ */
 :root {
-  /* Typography */
+  /* ── Neutral scale ───────────────────────────────────────────────── */
+  --gray-0: #ffffff;
+  --gray-25: #fbfbfa;
+  --gray-50: #f7f7f5;
+  --gray-75: #f2f2f0;
+  --gray-100: #ebebe8;
+  --gray-200: #dcdcd8;
+  --gray-300: #c5c5c0;
+  --gray-400: #9d9d98;
+  --gray-500: #7c7c78;
+  --gray-600: #5f5f5c;
+  --gray-700: #42423f;
+  --gray-800: #28282a;
+  --gray-900: #18181b;
+
+  /* ── Surfaces ─────────────────────────────────────────────────────── */
+  --bg: #f6f6f4; /* page plane */
+  --surface: var(--gray-0); /* cards, panels */
+  --surface-raised: var(--gray-0); /* popovers, tooltips */
+  --surface-subtle: var(--gray-25); /* quiet fills inside a surface */
+  --surface-sunken: var(--gray-75); /* tracks, wells, segmented controls */
+  --surface-hover: rgba(24, 24, 27, 0.035);
+  --surface-pressed: rgba(24, 24, 27, 0.06);
+
+  /* ── Borders ──────────────────────────────────────────────────────── */
+  --border: rgba(24, 24, 27, 0.08);
+  --border-strong: rgba(24, 24, 27, 0.14);
+  --divider: rgba(24, 24, 27, 0.06);
+  --border-width: 1px;
+
+  /* ── Text ─────────────────────────────────────────────────────────── */
+  --text-1: #18181b; /* primary */
+  --text-2: #5c5c62; /* secondary */
+  --text-3: #8c8c93; /* tertiary, labels, axes */
+  --text-4: #b3b3b9; /* disabled, placeholders */
+  --text-inverse: #ffffff;
+
+  /* ── Accent (selection, focus, active states) ─────────────────────── */
+  --accent: #5b5bd6;
+  --accent-hover: #4d4dc5;
+  --accent-text: #4646b5;
+  --accent-soft: rgba(91, 91, 214, 0.09);
+  --accent-soft-strong: rgba(91, 91, 214, 0.16);
+  --accent-ring: rgba(91, 91, 214, 0.28);
+
+  /* ── Performance (validated for colour-vision deficiency: deutan ΔE 8.6)
+        Marks/tints use --gain/--loss; numbers use the darker *-text steps. */
+  --gain: #0f8b6c;
+  --gain-text: #0b7058;
+  --gain-soft: rgba(15, 139, 108, 0.075);
+  --gain-soft-strong: rgba(15, 139, 108, 0.14);
+  --loss: #d9464f;
+  --loss-text: #b8343d;
+  --loss-soft: rgba(217, 70, 79, 0.065);
+  --loss-soft-strong: rgba(217, 70, 79, 0.13);
+
+  /* ── Status (always paired with an icon or label) ─────────────────── */
+  --warning: #a86a10;
+  --warning-mark: #f2a600;
+  --warning-soft: rgba(242, 166, 0, 0.12);
+  --danger: var(--loss-text);
+  --danger-soft: var(--loss-soft-strong);
+  --success: var(--gain-text);
+  --success-soft: var(--gain-soft-strong);
+  --info: var(--accent-text);
+  --info-soft: var(--accent-soft);
+  --news: #e5484d;
+
+  /* ── Charts (palette slots validated together) ────────────────────── */
+  --chart-1: #4f5bd5; /* primary series / "all" */
+  --chart-2: #f47230; /* comparison series / "selected" */
+  --chart-3: #f2a600; /* tertiary (missed) */
+  --chart-ref: #a1a1a8; /* reference & target lines */
+  --chart-grid: rgba(24, 24, 27, 0.06);
+  --chart-axis: rgba(24, 24, 27, 0.16);
+  --series-1: var(--chart-1);
+  --series-2: var(--chart-2);
+
+  /* ── Sidebar ──────────────────────────────────────────────────────── */
+  --side-bg: #111113;
+  --side-text: #ededf0;
+  --side-text-2: #9a9aa3;
+  --side-text-3: #66666e;
+  --side-hover: rgba(255, 255, 255, 0.05);
+  --side-active: rgba(255, 255, 255, 0.085);
+  --side-border: rgba(255, 255, 255, 0.07);
+
+  /* ── Typography ───────────────────────────────────────────────────── */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-2xs: 11px;
+  --text-xs: 11.5px;
+  --text-sm: 12.5px;
+  --text-base: 13.5px;
+  --text-md: 14.5px;
+  --text-lg: 16px;
+  --text-xl: 19px;
+  --text-2xl: 24px;
+  --text-3xl: 28px;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --tracking-tight: -0.011em;
+  --tracking-tighter: -0.022em;
 
-  /* Canvas */
-  --bg: #f4f4f1;
-  --surface: #ffffff;
-  --surface-2: #fafaf8;
-  --surface-sunk: #efefeb;
-  --border: #e4e3de;
-  --border-strong: #d3d2cb;
-  --text: #111214;
-  --text-2: #4a4b50;
-  --text-3: #85868b;
+  /* ── Spacing (4px grid) ───────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
 
-  /* Sidebar */
-  --side-bg: #0b0c0e;
-  --side-surface: #141518;
-  --side-border: #202226;
-  --side-text: #e8e8ea;
-  --side-text-2: #8b8d93;
-
-  /* Signal colours — restrained */
-  --brand: #22c55e;
-  --positive: #15803d;
-  --positive-bg: #ecf6ef;
-  --positive-line: #bfe3ca;
-  --warning: #a16207;
-  --warning-bg: #fcf5e3;
-  --warning-line: #efd9a4;
-  --negative: #b42318;
-  --negative-bg: #fcefed;
-  --negative-line: #f1c6c0;
-  --info: #1f4fd1;
-  --info-bg: #eef2fd;
-  --info-line: #c9d5f7;
-  --accent: #111214;
-
-  /* Chart marks — gain/loss pair validated for colour-vision deficiency
-     (deutan ΔE 11.6, normal ΔE 29.5). Values always carry a sign as well. */
-  --gain: #0d9488;
-  --loss: #e5484d;
-  --gain-wash: rgba(13, 148, 136, 0.1);
-  --loss-wash: rgba(229, 72, 77, 0.09);
-  /* Categorical slots 1–2 from the validated reference palette (two-line charts). */
-  --series-1: #257de0;
-  --series-2: #f47230;
-  --grid: #ecebe7;
-  --axis: #c9c8c2;
-
-  /* Shape */
+  /* ── Radii ────────────────────────────────────────────────────────── */
+  --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --shadow: 0 1px 2px rgba(17, 18, 20, 0.04), 0 1px 1px rgba(17, 18, 20, 0.03);
-  --shadow-lg: 0 10px 30px -12px rgba(17, 18, 20, 0.18);
-  --ring: 0 0 0 3px rgba(34, 197, 94, 0.22);
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 999px;
 
-  --sidebar-w: 236px;
+  /* ── Elevation (rings stand in for borders on raised surfaces) ────── */
+  --ring: 0 0 0 1px var(--border);
+  --shadow-xs: 0 1px 1px rgba(16, 16, 20, 0.03);
+  --shadow-sm: 0 0 0 1px rgba(16, 16, 20, 0.06), 0 1px 2px rgba(16, 16, 20, 0.04);
+  --shadow-md: 0 0 0 1px rgba(16, 16, 20, 0.06), 0 2px 4px rgba(16, 16, 20, 0.04), 0 8px 20px -6px rgba(16, 16, 20, 0.08);
+  --shadow-lg: 0 0 0 1px rgba(16, 16, 20, 0.07), 0 12px 32px -8px rgba(16, 16, 20, 0.18);
+  --focus-ring: 0 0 0 3px var(--accent-ring);
+
+  /* ── Motion ───────────────────────────────────────────────────────── */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 120ms;
+  --duration: 180ms;
+
+  /* ── Layout ───────────────────────────────────────────────────────── */
+  --sidebar-w: 232px;
+  --topbar-h: 52px;
+  --content-max: 1280px;
+  --content-pad: var(--space-7);
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Stepper } from './components/Stepper';
 import { Icon } from '../../ui/primitives';
+import { PageHeader } from '../../ui/PageHeader';
 import { CompleteStep } from './steps/CompleteStep';
 import { MapPropertiesStep } from './steps/MapPropertiesStep';
 import { SelectDatabaseStep } from './steps/SelectDatabaseStep';
@@ -17,18 +18,11 @@ export function ImportWizard({ services }: { services: ImportServices }) {
 
   return (
     <div className="wizard" ref={top}>
-      <header className="wizard__head">
-        <div className="wizard__title">
-          <span className="source-mark" aria-hidden="true">
-            N
-          </span>
-          <div>
-            <div className="eyebrow">Data sources · {services.connector.label}</div>
-            <h1>Import trades from {services.connector.label}</h1>
-          </div>
-        </div>
-        <Stepper step={wizard.step} />
-      </header>
+      <PageHeader
+        title={`Import from ${services.connector.label}`}
+        description="Connect a trade database, match its properties to Tradelens fields and review the data before importing."
+        actions={<Stepper step={wizard.step} />}
+      />
 
       {wizard.error && wizard.step !== 'validate' && (
         <div className="callout callout--negative">

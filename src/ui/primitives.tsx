@@ -124,6 +124,10 @@ export function Panel({
   );
 }
 
+/**
+ * One figure in a metric strip. Label (muted, sentence case) → value (large,
+ * tabular) → supporting line. Group several inside `<div className="metrics">`.
+ */
 export function Stat({
   label,
   value,
@@ -138,13 +142,13 @@ export function Stat({
   foot?: ReactNode;
 }) {
   return (
-    <div className={`stat ${tone ? `stat--${tone}` : ''}`}>
-      <div className="eyebrow">{label}</div>
-      <div className="stat__value">
+    <div className={`metric ${tone ? `metric--${tone}` : ''}`}>
+      <div className="metric__label">{label}</div>
+      <div className="metric__value">
         {value}
-        {unit && <span className="stat__unit">{unit}</span>}
+        {unit && <span className="metric__unit">{unit}</span>}
       </div>
-      {foot && <div className="stat__foot">{foot}</div>}
+      {foot && <div className="metric__foot">{foot}</div>}
     </div>
   );
 }
@@ -154,6 +158,8 @@ export function Spinner() {
 }
 
 // ── Formatting ───────────────────────────────────────────────────────────
+/** Typographic minus (U+2212): same width as + and digits, unlike a hyphen. */
+export const minus = (s: string) => s.replace(/^-/, '\u2212').replace(/([\s(])-/g, '$1\u2212');
 const dateFmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 export function fmtDate(iso: string | null | undefined) {
@@ -163,21 +169,21 @@ export function fmtDate(iso: string | null | undefined) {
 }
 
 export function fmtPct(n: unknown) {
-  return typeof n === 'number' ? `${n > 0 ? '+' : ''}${n.toFixed(2)}%` : '—';
+  return typeof n === 'number' ? minus(`${n > 0 ? '+' : ''}${n.toFixed(2)}%`) : '—';
 }
 
 export function fmtRisk(n: unknown) {
-  return typeof n === 'number' ? `${n.toFixed(2)}%` : '—';
+  return typeof n === 'number' ? minus(`${n.toFixed(2)}%`) : '—';
 }
 
 export function fmtR(n: unknown) {
-  return typeof n === 'number' ? `${n > 0 ? '+' : ''}${n.toFixed(2)}R` : '—';
+  return typeof n === 'number' ? minus(`${n > 0 ? '+' : ''}${n.toFixed(2)}R`) : '—';
 }
 
 const amountFmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 });
 /** Money amount in account currency (no symbol — the currency isn't known). */
 export function fmtAmount(n: number | null | undefined) {
-  return typeof n === 'number' ? `${n > 0 ? '+' : ''}${amountFmt.format(n)}` : '—';
+  return typeof n === 'number' ? minus(`${n > 0 ? '+' : ''}${amountFmt.format(n)}`) : '—';
 }
 
 export function fmtWinRate(n: number | null | undefined) {

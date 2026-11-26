@@ -6,7 +6,10 @@ import { takenOnly } from '../../domain/trades/status';
 import { GoalsPanel } from '../goals/GoalsPanel';
 import { amountOf, cumulativeR } from '../../domain/trades/summary';
 import type { StandardTrade } from '../../domain/trades/types';
+import { groupByLocalDate, type NewsEvent } from '../../domain/news/types';
+import { fetchNews } from '../../sources/news/newsClient';
 import { EquityCurve } from '../../ui/charts/EquityCurve';
+import { PageHeader } from '../../ui/PageHeader';
 import { Badge, fmtDate, fmtPct, fmtR, fmtWinRate, Icon, signTone, Stat } from '../../ui/primitives';
 import { fmtMetric, metricValue, TradeCalendar, type CalendarMetric } from './TradeCalendar';
 
@@ -26,6 +29,19 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
   const [ym, setYm] = useState<{ year: number; month: number } | null>(null);
   const [metric, setMetric] = useState<CalendarMetric>('r');
   const [selected, setSelected] = useState<string | null>(null);
+  const [news, setNews] = useState<Map<string, NewsEvent[]>>(new Map());
+
+  // High-impact economic news for the visible month (optional — empty on failure).
+  useEffect(() => {
+    if (!ym) return;
+    const from = new Date(Date.UTC(ym.year, ym.month, 1)).toISOString().slice(0, 10);
+    const to = new Date(Date.UTC(ym.year, ym.month + 1, 0)).toISOString().slice(0, 10);
+    let live = true;
+    void fetchNews(from, to).then((events) => live && setNews(groupByLocalDate(events)));
+    return () => {
+      live = false;
+    };
+  }, [ym]);
 
   useEffect(() => {
     void repo.list().then((all) => {
@@ -75,7 +91,7 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
     <div className="page">
       <PageHead />
 
-      <div className="stat-row stat-row--6">
+      <div className="metrics metrics--6">
         <Stat label="Net R" value={fmtR(perf.netR)} tone={perf.netR >= 0 ? 'positive' : 'negative'} foot={`${perf.count} trades · ${perf.tradingDays} days`} />
         <Stat
           label="Win rate"
@@ -93,7 +109,7 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
         />
         <Stat label="Profit factor" value={perf.profitFactor === null ? '—' : perf.profitFactor.toFixed(2)} foot="R won ÷ R lost" />
         <Stat label="Expectancy" value={fmtR(perf.avgR)} foot="Average R per trade" />
-        <Stat label="Max drawdown" value={perf.maxDrawdownR ? `-${perf.maxDrawdownR.toFixed(2)}R` : '0R'} tone={perf.maxDrawdownR ? 'negative' : undefined} foot={perf.currentDrawdownR ? `Currently -${perf.currentDrawdownR.toFixed(2)}R from peak` : 'At equity high'} />
+        <Stat label="Max drawdown" value={perf.maxDrawdownR ? `\u2212${perf.maxDrawdownR.toFixed(2)}R` : '0R'} tone={perf.maxDrawdownR ? 'negative' : undefined} foot={perf.currentDrawdownR ? `Currently \u2212${perf.currentDrawdownR.toFixed(2)}R from peak` : 'At equity high'} />
         <Stat label="Streaks" value={`${perf.longestWinStreak}W / ${perf.longestLossStreak}L`} foot="Longest win / loss run" />
       </div>
 
@@ -107,6 +123,11 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
         today={todayIso()}
         onSelect={setSelected}
         onMonthChange={moveMonth}
+        onToday={() => {
+          const now = new Date();
+          setYm({ year: now.getUTCFullYear(), month: now.getUTCMonth() });
+        }}
+        news={news}
         onMetricChange={setMetric}
       />
 
@@ -115,7 +136,7 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
       <div className="overview-grid">
         <section className="panel">
           <header className="panel__head">
-            <h3 className="eyebrow">Equity curve · cumulative R</h3>
+            <h3 className="section-title">Equity curve · cumulative R</h3>
             <a className="panel__aside link" href="#/performance">
               Analyse <Icon name="arrowRight" size={12} />
             </a>
@@ -127,7 +148,7 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
 
         <section className="panel">
           <header className="panel__head">
-            <h3 className="eyebrow">{selected ? longDate.format(new Date(`${selected}T00:00:00Z`)) : 'Select a day'}</h3>
+            <h3 className="section-title">{selected ? longDate.format(new Date(`${selected}T00:00:00Z`)) : 'Select a day'}</h3>
             {day && (
               <span className={`panel__aside num ${signTone(metricValue(day, metric))}`}>{fmtMetric(metricValue(day, metric), metric)}</span>
             )}
@@ -172,17 +193,5 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
 }
 
 function PageHead() {
-  return (
-    <header className="wizard__head">
-      <div className="wizard__title">
-        <span className="source-mark" aria-hidden="true">
-          <Icon name="grid" size={18} />
-        </span>
-        <div>
-          <div className="eyebrow">Home</div>
-          <h1>Dashboard</h1>
-        </div>
-      </div>
-    </header>
-  );
+  return <PageHeader title="Dashboard" description="Your trading month at a glance." />;
 }

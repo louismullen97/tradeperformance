@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type Connect, type Plugin, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { handleNewsApi } from './server/news/handler';
 import { handleNotionApi } from './server/notion/handler';
 
 /**
@@ -11,10 +12,19 @@ function notionApi(token: string | undefined): Plugin {
   const middleware: Connect.NextHandleFunction = (req, res) => {
     void handleNotionApi(req, res, { token });
   };
+  const news: Connect.NextHandleFunction = (req, res) => {
+    void handleNewsApi(req, res, { cachePath: '.cache/news.json' });
+  };
   return {
     name: 'tradelens-notion-api',
-    configureServer: (server) => void server.middlewares.use('/api/notion', middleware),
-    configurePreviewServer: (server) => void server.middlewares.use('/api/notion', middleware),
+    configureServer: (server) => {
+      server.middlewares.use('/api/notion', middleware);
+      server.middlewares.use('/api/news', news);
+    },
+    configurePreviewServer: (server) => {
+      server.middlewares.use('/api/notion', middleware);
+      server.middlewares.use('/api/news', news);
+    },
   };
 }
 

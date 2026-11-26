@@ -111,18 +111,18 @@ export function PerformanceOverview({ trades: repo }: { trades: TradeRepository 
             </div>
           </div>
 
-          <div className="stat-row stat-row--6">
+          <div className="metrics metrics--6">
             <Stat label={filtered ? 'Trades (filtered)' : 'Trades'} value={perf.count} foot={`${perf.wins}W · ${perf.losses}L · ${perf.breakeven} BE`} />
             <Stat label="Win rate" value={fmtWinRate(perf.winRate)} foot="Breakevens excluded" />
             <Stat label="Net R" value={fmtR(perf.netR)} tone={perf.netR > 0 ? 'positive' : perf.netR < 0 ? 'negative' : undefined} foot={`Net ${fmtPct(perf.netPl)}`} />
             <Stat label="Expectancy" value={fmtR(perf.avgR)} foot={`Avg win ${fmtR(perf.avgWinR)} · loss ${fmtR(perf.avgLossR)}`} />
             <Stat label="Profit factor" value={perf.profitFactor === null ? '—' : perf.profitFactor.toFixed(2)} foot="R won ÷ R lost" />
-            <Stat label="Max drawdown" value={perf.maxDrawdownR ? `-${perf.maxDrawdownR.toFixed(2)}R` : '0R'} tone={perf.maxDrawdownR ? 'negative' : undefined} foot={`Streaks ${perf.longestWinStreak}W / ${perf.longestLossStreak}L`} />
+            <Stat label="Max drawdown" value={perf.maxDrawdownR ? `\u2212${perf.maxDrawdownR.toFixed(2)}R` : '0R'} tone={perf.maxDrawdownR ? 'negative' : undefined} foot={`Streaks ${perf.longestWinStreak}W / ${perf.longestLossStreak}L`} />
           </div>
 
           <section className="panel">
             <header className="panel__head">
-              <h3 className="eyebrow">Equity curve · cumulative R</h3>
+              <h3 className="section-title">Equity curve · cumulative R</h3>
               <span className="panel__aside muted">{trades.length} trades</span>
             </header>
             <div className="panel__body">
@@ -133,7 +133,7 @@ export function PerformanceOverview({ trades: repo }: { trades: TradeRepository 
           {activeGroup && (
             <section className="panel">
               <header className="panel__head panel__head--wrap">
-                <h3 className="eyebrow">Breakdown</h3>
+                <h3 className="section-title">Breakdown</h3>
                 <div className="tabs" role="tablist" aria-label="Group by">
                   {groupDims.map((d) => (
                     <button key={d.key} role="tab" aria-selected={activeGroup.key === d.key} className={`tab ${activeGroup.key === d.key ? 'is-active' : ''}`} onClick={() => setGroupBy(d.key)}>
@@ -153,7 +153,7 @@ export function PerformanceOverview({ trades: repo }: { trades: TradeRepository 
   );
 }
 
-function TagAnalysis({
+export function TagAnalysis({
   rows,
   sources,
   source,
@@ -174,7 +174,7 @@ function TagAnalysis({
     <section className="panel">
       <header className="panel__head panel__head--wrap">
         <div>
-          <h3 className="eyebrow">Tag analysis · winners vs losers</h3>
+          <h3 className="section-title">Winners vs losers by tag</h3>
           <p className="panel__sub">
             How often each tag appears on winning trades compared with losing trades, across {perfWins} wins and {perfLosses} losses.
           </p>
@@ -228,10 +228,10 @@ function TagAnalysis({
                     <td>
                       <div className="tag-cell">
                         <span className="strong">{r.tag}</span>
-                        <Badge tone={r.source === 'Negative' ? 'negative' : r.source === 'Positive' ? 'positive' : 'neutral'}>{r.source}</Badge>
+                        {sources.length > 1 && <Badge tone={r.source === 'Negative' ? 'negative' : r.source === 'Positive' ? 'positive' : 'neutral'}>{r.source}</Badge>}
                         {r.lowSample && (
                           <span className="low-sample" title={`Only ${r.trades} trade${r.trades === 1 ? '' : 's'} — not enough to draw conclusions`}>
-                            low sample
+                            Low sample
                           </span>
                         )}
                       </div>

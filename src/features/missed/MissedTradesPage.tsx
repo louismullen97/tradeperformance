@@ -6,6 +6,7 @@ import { missedOnly, takenOnly } from '../../domain/trades/status';
 import { outcomeOf } from '../../domain/trades/summary';
 import type { StandardTrade } from '../../domain/trades/types';
 import { LineChart } from '../../ui/charts/LineChart';
+import { PageHeader } from '../../ui/PageHeader';
 import { fmtDate, fmtPct, fmtR, Icon, signTone, Stat } from '../../ui/primitives';
 import { BreakdownTable } from '../performance/BreakdownTable';
 
@@ -41,17 +42,7 @@ export function MissedTradesPage({ trades: repo }: { trades: TradeRepository }) 
 
   return (
     <div className="page">
-      <header className="wizard__head">
-        <div className="wizard__title">
-          <span className="source-mark" aria-hidden="true">
-            <Icon name="search" size={18} />
-          </span>
-          <div>
-            <div className="eyebrow">Analyse · Missed trades</div>
-            <h1>Missed trades</h1>
-          </div>
-        </div>
-      </header>
+      <PageHeader title="Missed trades" description="Valid setups you didn't take, and what they would have done." />
 
       {missed.length === 0 ? (
         <div className="panel empty-state">
@@ -69,7 +60,7 @@ export function MissedTradesPage({ trades: repo }: { trades: TradeRepository }) 
         </div>
       ) : (
         <>
-          <div className="stat-row stat-row--5">
+          <div className="metrics metrics--5">
             <Stat label="Missed trades" value={missed.length} foot={`${missedWins.length} would-be wins · ${missedLosses.length} losses`} />
             <Stat label="Left on the table" value={fmtR(leftOnTable)} tone={leftOnTable > 0 ? 'positive' : undefined} foot="R from missed winners" />
             <Stat label="Losses avoided" value={fmtR(avoided)} foot="R from missed losers" />
@@ -84,7 +75,7 @@ export function MissedTradesPage({ trades: repo }: { trades: TradeRepository }) 
 
           <section className="panel">
             <header className="panel__head">
-              <h3 className="eyebrow">Real vs potential equity · cumulative R</h3>
+              <h3 className="section-title">Real vs potential equity · cumulative R</h3>
             </header>
             <div className="panel__body">
               <LineChart
@@ -97,7 +88,7 @@ export function MissedTradesPage({ trades: repo }: { trades: TradeRepository }) 
 
           <section className="panel">
             <header className="panel__head panel__head--wrap">
-              <h3 className="eyebrow">Missed trades by</h3>
+              <h3 className="section-title">Missed trades by</h3>
               {hasReason && (
                 <div className="tabs" role="tablist">
                   <button role="tab" aria-selected={groupBy === 'missed_reason'} className={`tab ${groupBy === 'missed_reason' ? 'is-active' : ''}`} onClick={() => setGroupBy('missed_reason')}>
@@ -117,7 +108,7 @@ export function MissedTradesPage({ trades: repo }: { trades: TradeRepository }) 
 
           <section className="panel">
             <header className="panel__head">
-              <h3 className="eyebrow">Missed trades · {missed.length}</h3>
+              <h3 className="section-title">Missed trades · {missed.length}</h3>
             </header>
             <div className="table-wrap">
               <table className="preview-table">

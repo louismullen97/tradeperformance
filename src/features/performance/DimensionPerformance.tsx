@@ -36,20 +36,20 @@ const fmtPF = (r: BreakdownRow['stats']) =>
 function Highlight({ title, row, foot, onPick, picked }: { title: string; row: BreakdownRow | null; foot: (r: BreakdownRow) => string; onPick: (v: string) => void; picked: boolean }) {
   if (!row)
     return (
-      <div className="stat highlight">
-        <div className="eyebrow">{title}</div>
+      <div className="metric highlight">
+        <div className="metric__label">{title}</div>
         <div className="highlight__value muted">—</div>
-        <div className="stat__foot">Needs at least two groups</div>
+        <div className="metric__foot">Needs at least two groups</div>
       </div>
     );
   return (
-    <button className={`stat highlight ${picked ? 'is-picked' : ''}`} onClick={() => onPick(row.value)} title="Show this on the chart">
-      <div className="eyebrow">{title}</div>
+    <button className={`metric highlight ${picked ? 'is-picked' : ''}`} onClick={() => onPick(row.value)} title="Compare on the chart" aria-pressed={picked}>
+      <div className="metric__label">{title}</div>
       <div className="highlight__value">
         {row.value}
-        {row.stats.count < MIN_TAG_SAMPLE && <span className="low-sample">low sample</span>}
+        {row.stats.count < MIN_TAG_SAMPLE && <span className="low-sample">Low sample</span>}
       </div>
-      <div className="stat__foot">{foot(row)}</div>
+      <div className="metric__foot">{foot(row)}</div>
     </button>
   );
 }
@@ -106,16 +106,16 @@ export function DimensionPerformance({ trades: repo, sub }: { trades: TradeRepos
             </div>
           </div>
 
-          <div className="stat-row">
-            <Highlight title={`Best performing ${noun}`} row={h.best} picked={picked === h.best?.value} onPick={setPicked} foot={(r) => `${fmtR(r.stats.netR)} · PF ${fmtPF(r.stats)} · ${fmtWinRate(r.stats.winRate)} win`} />
-            <Highlight title={`Least performing ${noun}`} row={h.worst} picked={picked === h.worst?.value} onPick={setPicked} foot={(r) => `${fmtR(r.stats.netR)} · PF ${fmtPF(r.stats)} · ${fmtWinRate(r.stats.winRate)} win`} />
-            <Highlight title={`Most frequent ${noun}`} row={h.mostFrequent} picked={picked === h.mostFrequent?.value} onPick={setPicked} foot={(r) => `${r.stats.count} trades · ${(r.share * 100).toFixed(0)}% of all`} />
-            <Highlight title={`Least frequent ${noun}`} row={h.leastFrequent} picked={picked === h.leastFrequent?.value} onPick={setPicked} foot={(r) => `${r.stats.count} trades · ${(r.share * 100).toFixed(0)}% of all`} />
+          <div className="metrics">
+            <Highlight title="Best performing" row={h.best} picked={picked === h.best?.value} onPick={setPicked} foot={(r) => `${fmtR(r.stats.netR)} · PF ${fmtPF(r.stats)} · ${fmtWinRate(r.stats.winRate)} win`} />
+            <Highlight title="Least performing" row={h.worst} picked={picked === h.worst?.value} onPick={setPicked} foot={(r) => `${fmtR(r.stats.netR)} · PF ${fmtPF(r.stats)} · ${fmtWinRate(r.stats.winRate)} win`} />
+            <Highlight title="Most frequent" row={h.mostFrequent} picked={picked === h.mostFrequent?.value} onPick={setPicked} foot={(r) => `${r.stats.count} trades · ${(r.share * 100).toFixed(0)}% of all`} />
+            <Highlight title="Least frequent" row={h.leastFrequent} picked={picked === h.leastFrequent?.value} onPick={setPicked} foot={(r) => `${r.stats.count} trades · ${(r.share * 100).toFixed(0)}% of all`} />
           </div>
 
           <section className="panel">
             <header className="panel__head panel__head--wrap">
-              <h3 className="eyebrow">Equity curve · all trades vs one {noun}</h3>
+              <h3 className="section-title">Equity curve · all trades vs one {noun}</h3>
               <div className="pills" role="radiogroup" aria-label={`Compare a ${noun}`}>
                 <button role="radio" aria-checked={picked === null} className={`pill ${picked === null ? 'is-active' : ''}`} onClick={() => setPicked(null)}>
                   All only
@@ -185,7 +185,7 @@ export function DimensionPerformance({ trades: repo, sub }: { trades: TradeRepos
 
           <section className="panel">
             <header className="panel__head">
-              <h3 className="eyebrow">Every {noun}</h3>
+              <h3 className="section-title">Every {noun}</h3>
               <span className="panel__aside muted">Click a row to compare it</span>
             </header>
             <BreakdownTable rows={h.rows} label={dim.label} selected={picked} onSelect={(v) => setPicked(picked === v ? null : v)} />

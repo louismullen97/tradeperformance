@@ -183,6 +183,16 @@ export const TRADE_FIELDS: readonly FieldDefinition[] = [
     example: 'early-exit',
   },
   {
+    key: 'psychology_tags',
+    label: 'Psychology',
+    description: 'How you felt before or during the trade (e.g. calm, fear of losing, FOMO).',
+    required: false,
+    valueKind: 'string_list',
+    group: 'meta',
+    aliases: ['Psychology', 'Psychology Tags', 'Emotions', 'Emotion', 'Mindset', 'Feelings', 'Emotional State', 'Mental State'],
+    example: 'Felt calm',
+  },
+  {
     key: 'tags',
     label: 'Other tags',
     description: 'Any other labels — confluences, structure, conditions.',

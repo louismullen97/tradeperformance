@@ -23,7 +23,7 @@ export function CompleteStep({ wizard }: { wizard: ImportWizardModel }) {
         </div>
       </div>
 
-      <div className="stat-row">
+      <div className="metrics">
         <Stat label="Imported" value={batch.counts.imported} tone="positive" />
         <Stat label="Skipped by you" value={batch.counts.skippedByUser} />
         <Stat label="Excluded (invalid)" value={batch.counts.skippedInvalid} tone={batch.counts.skippedInvalid ? 'negative' : undefined} />

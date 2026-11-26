@@ -9,7 +9,10 @@ import type { ImportServices } from './features/import-wizard/useImportWizard';
 import { HttpConnector, type ConnectionStatus } from './sources/http/httpConnector';
 import { MockNotionConnector } from './sources/notion/mockConnector';
 import './styles/tokens.css';
-import './styles/app.css';
+import './styles/base.css';
+import './styles/layout.css';
+import './styles/components.css';
+import './styles/features.css';
 
 const NOTION_API = '/api/notion';
 

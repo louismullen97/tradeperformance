@@ -1,0 +1,144 @@
+/* Reset, typography and small utilities. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-tight);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Tabular figures everywhere so numbers align in columns and tiles. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+}
+button,
+select,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+a {
+  color: inherit;
+}
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+code,
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  letter-spacing: 0;
+}
+pre {
+  margin: 0;
+}
+
+/* ── Type roles ───────────────────────────────────────────────────────── */
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tighter);
+  line-height: var(--leading-tight);
+}
+.section-title,
+.step-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+.step-title {
+  font-size: var(--text-lg);
+}
+.section-sub,
+.step-sub,
+.panel__sub {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  max-width: 68ch;
+}
+.step-sub {
+  font-size: var(--text-base);
+}
+/* Small labels: sentence case, muted — no uppercase or letter spacing. */
+.eyebrow,
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-3);
+  letter-spacing: 0;
+}
+.muted {
+  color: var(--text-3);
+}
+.small {
+  font-size: var(--text-sm);
+}
+.strong {
+  font-weight: var(--weight-medium);
+  color: var(--text-1);
+}
+.hl {
+  font-weight: inherit;
+}
+
+/* Numbers */
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.num--pos,
+.num-gain {
+  color: var(--gain-text);
+}
+.num--neg,
+.num-loss {
+  color: var(--loss-text);
+}
+.num-flat {
+  color: var(--text-2);
+}
+
+/* Links */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-text);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  border-radius: var(--radius-xs);
+}
+.link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.flip-x {
+  transform: scaleX(-1);
+}
+.flip {
+  transform: rotate(180deg);
+}
+.hint {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
