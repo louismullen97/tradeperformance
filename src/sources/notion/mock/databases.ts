@@ -1,8 +1,8 @@
-import type { NotionDatabase, NotionPage } from '../types';
+import type { NotionDataSource, NotionPage } from '../types';
 import { generateTrades, notionId, page, rt, S, V } from './builders';
 
 export interface MockNotionDatabase {
-  database: NotionDatabase;
+  dataSource: NotionDataSource;
   pages: NotionPage[];
 }
 
@@ -35,10 +35,11 @@ function tradingJournal(): MockNotionDatabase {
     shots: 'Sc%7Ch',
     account: 'Ac%60c',
   };
-  const database: NotionDatabase = {
-    object: 'database',
+  const dataSource: NotionDataSource = {
+    object: 'data_source',
     id,
-    url: `https://www.notion.so/${id.replace(/-/g, '')}`,
+    parent: { type: 'database_id', database_id: notionId(`${slug}-db`) },
+    in_trash: false,
     title: rt('Trading Journal 2026'),
     icon: { type: 'emoji', emoji: '📈' },
     last_edited_time: '2026-03-19T18:42:00.000Z',
@@ -61,7 +62,7 @@ function tradingJournal(): MockNotionDatabase {
 
   const facts = generateTrades(2026, 46, '2026-01-05', setups, [0.5, 1, 1, 1, 1.5]);
   const pages = facts.map((t, i) =>
-    page(slug, i, `${t.pair} ${t.direction === 'long' ? '↑' : '↓'} ${t.setup}`, {
+    page(id, slug, i, `${t.pair} ${t.direction === 'long' ? '↑' : '↓'} ${t.setup}`, {
       Trade: V.title(P.trade, `${t.pair} ${t.direction === 'long' ? '↑' : '↓'} ${t.setup}`),
       Date: V.date(P.date, t.date),
       Pair: V.select(P.pair, t.pair),
@@ -80,10 +81,10 @@ function tradingJournal(): MockNotionDatabase {
 
   // Same trade logged twice (copy-pasted row).
   const dupSource = pages[8];
-  pages.splice(9, 0, { ...page(slug, 900, 'copy', dupSource.properties, dupSource.last_edited_time) });
+  pages.splice(9, 0, { ...page(id, slug, 900, 'copy', dupSource.properties, dupSource.last_edited_time) });
   // Empty template row left at the bottom of the database.
   pages.push(
-    page(slug, 901, '', {
+    page(id, slug, 901, '', {
       Trade: V.title(P.trade, ''),
       Date: V.date(P.date, null),
       Pair: V.select(P.pair, null),
@@ -99,7 +100,7 @@ function tradingJournal(): MockNotionDatabase {
       Account: V.select(P.account, null),
     }, '2026-03-19T18:42:00.000Z'),
   );
-  return { database, pages };
+  return { dataSource, pages };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -127,10 +128,11 @@ function fxTradeLog(): MockNotionDatabase {
     review: 'Rv%5Eb',
     status: 'Su%5Ew',
   };
-  const database: NotionDatabase = {
-    object: 'database',
+  const dataSource: NotionDataSource = {
+    object: 'data_source',
     id,
-    url: `https://www.notion.so/${id.replace(/-/g, '')}`,
+    parent: { type: 'database_id', database_id: notionId(`${slug}-db`) },
+    in_trash: false,
     title: rt('FX Trade Log'),
     icon: { type: 'emoji', emoji: '💱' },
     last_edited_time: '2026-03-21T09:15:00.000Z',
@@ -159,7 +161,7 @@ function fxTradeLog(): MockNotionDatabase {
     const plText =
       i === 12 ? '1.2.%' : i === 40 ? 'n/a' : `${t.pl > 0 ? '+' : ''}${t.pl.toFixed(2)}%`;
     const r = open ? null : i === 23 ? -t.r || 1.5 : t.r; // #23: R sign inverted by formula bug
-    return page(slug, i, `${t.pair} ${t.setup}`, {
+    return page(id, slug, i, `${t.pair} ${t.setup}`, {
       Name: V.title(P.name, `${t.pair} — ${t.setup}`),
       'Entry Date': V.date(P.entryDate, `${t.date}T${String(t.hour).padStart(2, '0')}:30:00.000+00:00`),
       Instrument: V.select(P.instrument, t.pair),
@@ -178,9 +180,9 @@ function fxTradeLog(): MockNotionDatabase {
     }, iso(t.closeDate, t.hour + 3));
   });
   const dup = pages[33];
-  pages.splice(34, 0, page(slug, 900, 'copy', dup.properties, dup.last_edited_time));
-  pages.splice(48, 0, page(slug, 901, 'copy', pages[47].properties, pages[47].last_edited_time));
-  return { database, pages };
+  pages.splice(34, 0, page(id, slug, 900, 'copy', dup.properties, dup.last_edited_time));
+  pages.splice(48, 0, page(id, slug, 901, 'copy', pages[47].properties, pages[47].last_edited_time));
+  return { dataSource, pages };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -204,10 +206,11 @@ function propChallenge(): MockNotionDatabase {
     lessons: 'Ls%5Bv',
     followed: 'Fp%3Fk',
   };
-  const database: NotionDatabase = {
-    object: 'database',
+  const dataSource: NotionDataSource = {
+    object: 'data_source',
     id,
-    url: `https://www.notion.so/${id.replace(/-/g, '')}`,
+    parent: { type: 'database_id', database_id: notionId(`${slug}-db`) },
+    in_trash: false,
     title: rt('Prop Challenge — Phase 1'),
     icon: { type: 'emoji', emoji: '🏁' },
     last_edited_time: '2026-02-27T21:03:00.000Z',
@@ -229,7 +232,7 @@ function propChallenge(): MockNotionDatabase {
   const facts = generateTrades(505, 27, '2026-02-02', setups, [0.5, 1]);
   const pages = facts.map((t, i) => {
     const rText = i === 14 ? 'BE' : `${t.r}R`;
-    return page(slug, i, `#${i + 1}`, {
+    return page(id, slug, i, `#${i + 1}`, {
       'Trade #': V.title(P.num, `#${i + 1}`),
       'Trade Date': V.text(P.tradeDate, i === 9 ? '31/02/2026' : ddmmyyyy(t.date)),
       Ticker: V.text(P.ticker, i === 5 ? '' : t.pair),
@@ -243,7 +246,7 @@ function propChallenge(): MockNotionDatabase {
       'Followed Plan': V.checkbox(P.followed, t.r > 0),
     }, iso(t.date, 20));
   });
-  return { database, pages };
+  return { dataSource, pages };
 }
 
 export const MOCK_DATABASES: MockNotionDatabase[] = [tradingJournal(), fxTradeLog(), propChallenge()];

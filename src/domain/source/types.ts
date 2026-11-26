@@ -59,7 +59,8 @@ export interface SourceDataset {
   name: string;
   icon?: string;
   url?: string;
-  recordCount: number;
+  /** Null when the provider can't report it cheaply (Notion has no count endpoint). */
+  recordCount: number | null;
   lastEditedTime?: string;
   workspace?: string;
 }
@@ -81,6 +82,8 @@ export interface DataSourceConnector {
   listDatasets(): Promise<SourceDataset[]>;
   getSchema(datasetId: string): Promise<SourceSchema>;
   fetchRecords(datasetId: string): Promise<SourceRecord[]>;
+  /** Optional: count records when listDatasets returned recordCount: null. */
+  countRecords?(datasetId: string): Promise<number>;
 }
 
 export function isEmptyValue(value: SourceValue | undefined): boolean {

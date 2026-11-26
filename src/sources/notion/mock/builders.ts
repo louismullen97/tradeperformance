@@ -81,6 +81,7 @@ export function notionId(seed: string) {
 }
 
 export function page(
+  dataSourceId: string,
   dbSlug: string,
   index: number,
   titleText: string,
@@ -95,7 +96,8 @@ export function page(
     url: `https://www.notion.so/${slug}-${id.replace(/-/g, '')}`,
     created_time: editedAt,
     last_edited_time: editedAt,
-    archived: false,
+    in_trash: false,
+    parent: { type: 'data_source_id', data_source_id: dataSourceId },
     properties,
   };
 }

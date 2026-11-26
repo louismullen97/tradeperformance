@@ -41,6 +41,24 @@ export function useImportWizard(services: ImportServices) {
   const [busy, setBusy] = useState<null | 'datasets' | 'loading' | 'importing'>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Some providers (Notion) can't count rows in the listing call; fill counts in
+  // one at a time so the list renders immediately and the API isn't flooded.
+  const loadMissingCounts = useCallback(
+    async (list: SourceDataset[]) => {
+      if (!connector.countRecords) return;
+      for (const d of list) {
+        if (d.recordCount !== null) continue;
+        try {
+          const n = await connector.countRecords(d.id);
+          setDatasets((cur) => cur?.map((x) => (x.id === d.id ? { ...x, recordCount: n } : x)) ?? cur);
+        } catch {
+          /* leave the count unknown; the import itself still works */
+        }
+      }
+    },
+    [connector],
+  );
+
   const loadDatasets = useCallback(async () => {
     setBusy('datasets');
     setError(null);
@@ -48,12 +66,13 @@ export function useImportWizard(services: ImportServices) {
       const [list, ids] = await Promise.all([connector.listDatasets(), mappings.listDatasetIds(connector.kind)]);
       setDatasets(list);
       setSavedIds(new Set(ids));
+      void loadMissingCounts(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load databases.');
     } finally {
       setBusy(null);
     }
-  }, [connector, mappings]);
+  }, [connector, mappings, loadMissingCounts]);
 
   useEffect(() => {
     void loadDatasets();
@@ -74,6 +93,7 @@ export function useImportWizard(services: ImportServices) {
       ]);
       setSchema(nextSchema);
       setRecords(nextRecords);
+      setDatasets((cur) => cur?.map((x) => (x.id === dataset.id ? { ...x, recordCount: nextRecords.length } : x)) ?? cur);
       if (saved) {
         const result = reconcileMapping(saved, nextSchema, fields);
         setConfig(result.config);

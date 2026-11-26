@@ -3,3 +3,6 @@ dist
 *.tsbuildinfo
 *.zip
 *.bundle
+.env
+.env.local
+.env.*.local

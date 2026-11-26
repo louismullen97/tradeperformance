@@ -143,6 +143,10 @@ h3 {
   flex: none;
 }
 
+.pulse--idle {
+  background: #e0a526;
+  box-shadow: 0 0 0 3px rgba(224, 165, 38, 0.18);
+}
 .main {
   min-width: 0;
   display: flex;
@@ -715,6 +719,36 @@ h3 {
   font-family: var(--font-mono);
   font-size: 18px;
   font-weight: 500;
+}
+.count-loading {
+  display: inline-block;
+  width: 28px;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--surface-sunk), var(--border), var(--surface-sunk));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+.mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--border-strong);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text-2);
+}
+.mode-banner code {
+  color: var(--text);
+}
+.mode-banner--error {
+  border-style: solid;
+  border-color: var(--negative-line);
+  background: var(--negative-bg);
+  color: var(--negative);
 }
 .db-card__saved {
   position: absolute;

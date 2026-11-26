@@ -1,14 +1,30 @@
 # Tradelens — Notion database mapping (stage 1)
 
 Mapping wizard that turns a user's Notion trade journal into standardised trades.
-Uses **mock Notion data** — no OAuth or API calls yet.
+Reads a live Notion workspace when a token is configured; otherwise shows demo data.
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm test           # engine tests (vitest)
+npm run dev        # http://localhost:5173  (add ?demo to force demo data)
+npm test           # engine + Notion client tests (vitest)
 npm run build      # typecheck + production build
 ```
+
+## Connecting Notion
+
+1. Create a connection at https://app.notion.com/developers/connections → **New connection** →
+   authentication method **API token**. On **Configuration**, enable only **Read content** and copy
+   the token (starts with `ntn_`).
+2. On **Content access**, add your trade journal database(s) — or in Notion: ••• → Connections.
+3. `cp .env.example .env.local` and set `NOTION_TOKEN=ntn_...`, then restart `npm run dev`.
+
+The token is read by the server only (`/api/notion/*`, mounted in the Vite dev/preview server) and
+never reaches the browser. Uses Notion API version `2026-03-11` (data sources, `in_trash`), paces
+requests for the ~3 req/s limit, honours `Retry-After`, and reads past the 10,000-row query cap.
+OAuth (a "Connect Notion" button for other users) is the next step; it plugs in behind the same
+`/api/notion` routes.
+
+> Behind an HTTPS proxy, run Node with `NODE_USE_ENV_PROXY=1` — Node's built-in fetch ignores `HTTPS_PROXY`.
 
 ## Architecture
 
@@ -21,11 +37,13 @@ src/
     validation/           value coercion + record validation → valid / attention / excluded
     trades/               StandardTrade with provenance back to the source record
     import/               import batch builder + TradeRepository interface
-  sources/notion/         The only code that knows Notion's API shape
-    types.ts              Subset of Notion API response types
-    translate.ts          Notion → domain types (formula result types inferred from samples)
-    mockConnector.ts      DataSourceConnector over fixtures; swap for the real client later
-    mock/                 3 deterministic databases in raw Notion API shape
+  sources/notion/         Notion API shapes (2026-03-11) + translator to domain types
+    mockConnector.ts      Demo DataSourceConnector over fixtures in raw API shape
+  sources/http/           HttpConnector — browser-side connector that calls our backend
+server/notion/            Server-only (holds the token)
+    client.ts             REST client: pacing, retries, pagination, created_time windows
+    apiConnector.ts       Live DataSourceConnector (search → data sources, query → rows)
+    handler.ts            /api/notion/* routes (plain Node req/res)
   features/import-wizard/ React UI: select → map → validate → done
   ui/primitives.tsx       Icons, badges, stats, formatters
   app/AppShell.tsx        Dark sidebar + top bar

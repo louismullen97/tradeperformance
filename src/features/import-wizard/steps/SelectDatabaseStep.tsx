@@ -11,7 +11,7 @@ export function SelectDatabaseStep({ wizard }: { wizard: ImportWizardModel }) {
         <div>
           <h2 className="step-title">Choose a trade database</h2>
           <p className="step-sub">
-            Databases shared with the {connector.label} integration. We read the structure and records — nothing is
+            Databases shared with the Tradelens connection in {connector.label}. We read the structure and records — nothing is
             written back to {connector.label}.
           </p>
         </div>
@@ -46,7 +46,7 @@ export function SelectDatabaseStep({ wizard }: { wizard: ImportWizardModel }) {
               <dl className="db-card__stats">
                 <div>
                   <dt className="eyebrow">Records</dt>
-                  <dd>{d.recordCount}</dd>
+                  <dd>{d.recordCount ?? <span className="count-loading" aria-label="Counting records" />}</dd>
                 </div>
                 <div>
                   <dt className="eyebrow">Edited</dt>
@@ -68,7 +68,11 @@ export function SelectDatabaseStep({ wizard }: { wizard: ImportWizardModel }) {
       {datasets && datasets.length === 0 && (
         <div className="empty">
           <Icon name="database" size={20} />
-          <p>No databases are shared with the integration yet.</p>
+          <p>
+            <strong>No databases shared yet.</strong>
+            <br />
+            In Notion, open your trade journal → ••• → Connections → add the Tradelens connection, then refresh.
+          </p>
         </div>
       )}
 

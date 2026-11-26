@@ -28,7 +28,13 @@ function Logo() {
   );
 }
 
-export function AppShell({ children, connectionLabel }: { children: ReactNode; connectionLabel: string }) {
+export interface ConnectionInfo {
+  live: boolean;
+  title: string;
+  subtitle: string;
+}
+
+export function AppShell({ children, connection }: { children: ReactNode; connection: ConnectionInfo }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -61,10 +67,10 @@ export function AppShell({ children, connectionLabel }: { children: ReactNode; c
         </nav>
         <div className="sidebar__foot">
           <div className="sidebar__conn">
-            <span className="pulse" />
+            <span className={connection.live ? 'pulse' : 'pulse pulse--idle'} />
             <div>
-              <div className="sidebar__conn-title">{connectionLabel}</div>
-              <div className="sidebar__conn-sub">Mock data · no live API</div>
+              <div className="sidebar__conn-title">{connection.title}</div>
+              <div className="sidebar__conn-sub">{connection.subtitle}</div>
             </div>
           </div>
           <a href="#" onClick={(e) => e.preventDefault()} className="sidebar__link" aria-disabled title="Coming soon">
@@ -88,7 +94,7 @@ export function AppShell({ children, connectionLabel }: { children: ReactNode; c
           </nav>
           <div className="topbar__right">
             <span className="env-pill">
-              <span className="dot dot--positive" /> Sandbox
+              <span className={`dot ${connection.live ? 'dot--positive' : 'dot--warning'}`} /> {connection.live ? 'Live' : 'Demo'}
             </span>
           </div>
         </header>
