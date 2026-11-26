@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { dailyStats, performance } from '../../domain/analytics/analytics';
+import type { GoalRepository } from '../../domain/goals/goals';
 import type { TradeRepository } from '../../domain/trades/repository';
+import { takenOnly } from '../../domain/trades/status';
+import { GoalsPanel } from '../goals/GoalsPanel';
 import { amountOf, cumulativeR } from '../../domain/trades/summary';
 import type { StandardTrade } from '../../domain/trades/types';
 import { EquityCurve } from '../../ui/charts/EquityCurve';
@@ -18,14 +21,15 @@ function initialMonth(trades: StandardTrade[]): { year: number; month: number } 
   return { year: Number(target.slice(0, 4)), month: Number(target.slice(5, 7)) - 1 };
 }
 
-export function OverviewPage({ trades: repo }: { trades: TradeRepository }) {
+export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository; goals: GoalRepository }) {
   const [trades, setTrades] = useState<StandardTrade[] | null>(null);
   const [ym, setYm] = useState<{ year: number; month: number } | null>(null);
   const [metric, setMetric] = useState<CalendarMetric>('r');
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    void repo.list().then((list) => {
+    void repo.list().then((all) => {
+      const list = takenOnly(all);
       setTrades(list);
       setYm(initialMonth(list));
       const latest = list.reduce((a, t) => (t.trade_date > a ? t.trade_date : a), '');
@@ -106,11 +110,13 @@ export function OverviewPage({ trades: repo }: { trades: TradeRepository }) {
         onMetricChange={setMetric}
       />
 
+      <GoalsPanel trades={trades} repo={goals} today={todayIso()} />
+
       <div className="overview-grid">
         <section className="panel">
           <header className="panel__head">
             <h3 className="eyebrow">Equity curve · cumulative R</h3>
-            <a className="panel__aside link" href="#/analysis">
+            <a className="panel__aside link" href="#/performance">
               Analyse <Icon name="arrowRight" size={12} />
             </a>
           </header>
@@ -173,8 +179,8 @@ function PageHead() {
           <Icon name="grid" size={18} />
         </span>
         <div>
-          <div className="eyebrow">Analyse · Overview</div>
-          <h1>Overview</h1>
+          <div className="eyebrow">Home</div>
+          <h1>Dashboard</h1>
         </div>
       </div>
     </header>

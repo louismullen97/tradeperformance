@@ -43,6 +43,9 @@
   --loss: #e5484d;
   --gain-wash: rgba(13, 148, 136, 0.1);
   --loss-wash: rgba(229, 72, 77, 0.09);
+  /* Categorical slots 1–2 from the validated reference palette (two-line charts). */
+  --series-1: #257de0;
+  --series-2: #f47230;
   --grid: #ecebe7;
   --axis: #c9c8c2;
 

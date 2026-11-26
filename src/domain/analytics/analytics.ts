@@ -248,3 +248,51 @@ export function presetRange(preset: RangePreset, today: Date = new Date()): { fr
       return {};
   }
 }
+
+// ── Dimension highlights ─────────────────────────────────────────────
+
+export interface DimensionHighlights {
+  best: BreakdownRow | null;
+  worst: BreakdownRow | null;
+  mostFrequent: BreakdownRow | null;
+  leastFrequent: BreakdownRow | null;
+  rows: BreakdownRow[];
+}
+
+/**
+ * Best/least performing are ranked by net R (ties → expectancy). With a single
+ * group there is nothing to compare, so worst/least are null.
+ */
+export function dimensionHighlights(trades: StandardTrade[], dim: Dimension): DimensionHighlights {
+  const rows = breakdown(trades, dim);
+  if (!rows.length) return { best: null, worst: null, mostFrequent: null, leastFrequent: null, rows };
+  const byPerf = [...rows].sort((a, b) => b.stats.netR - a.stats.netR || (b.stats.avgR ?? 0) - (a.stats.avgR ?? 0));
+  const byCount = [...rows].sort((a, b) => b.stats.count - a.stats.count || b.stats.netR - a.stats.netR);
+  const many = rows.length > 1;
+  return {
+    best: byPerf[0],
+    worst: many ? byPerf[byPerf.length - 1] : null,
+    mostFrequent: byCount[0],
+    leastFrequent: many ? byCount[byCount.length - 1] : null,
+    rows,
+  };
+}
+
+// ── Daily equity series ──────────────────────────────────────────────
+
+export interface DailyEquityPoint {
+  date: string;
+  /** Cumulative R at the end of the day. */
+  r: number;
+  /** R made that day. */
+  dayR: number;
+  trades: number;
+}
+
+export function dailyEquity(trades: StandardTrade[]): DailyEquityPoint[] {
+  let total = 0;
+  return [...dailyStats(trades).values()].map((d) => {
+    total = round(total + d.netR);
+    return { date: d.date, r: total, dayR: d.netR, trades: d.count };
+  });
+}

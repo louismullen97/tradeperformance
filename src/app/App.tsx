@@ -1,41 +1,46 @@
 import { useEffect, useState } from 'react';
-import { AnalysisPage } from '../features/analysis/AnalysisPage';
-import { JournalPage } from '../features/journal/JournalPage';
-import { OverviewPage } from '../features/overview/OverviewPage';
+import { LocalStorageGoalRepository } from '../domain/goals/goals';
 import { ImportWizard } from '../features/import-wizard/ImportWizard';
 import type { ImportServices } from '../features/import-wizard/useImportWizard';
+import { JournalPage } from '../features/journal/JournalPage';
+import { MissedTradesPage } from '../features/missed/MissedTradesPage';
+import { OverviewPage } from '../features/overview/OverviewPage';
+import { DimensionPerformance } from '../features/performance/DimensionPerformance';
+import { PerformanceOverview } from '../features/performance/PerformanceOverview';
+import type { PerformanceSub } from '../features/performance/PerformanceTabs';
 import type { ConnectionStatus } from '../sources/http/httpConnector';
 import { AppShell, type View } from './AppShell';
 import { ModeBanner } from './ModeBanner';
 
-function viewFromHash(fallback: View): View {
-  const h = location.hash.replace(/^#\/?/, '');
-  return (['overview', 'journal', 'analysis', 'imports'] as const).find((v) => v === h) ?? fallback;
+interface Route {
+  view: View;
+  sub: PerformanceSub;
 }
 
-export function App({
-  services,
-  status,
-  demo,
-  hasTrades,
-}: {
-  services: ImportServices;
-  status: ConnectionStatus;
-  demo: boolean;
-  hasTrades: boolean;
-}) {
+const VIEWS: View[] = ['overview', 'journal', 'performance', 'missed', 'imports'];
+
+function routeFromHash(fallback: View): Route {
+  const [head, sub] = location.hash.replace(/^#\/?/, '').split('/');
+  const view = (head === 'analysis' ? 'performance' : VIEWS.find((v) => v === head)) ?? fallback;
+  return { view, sub: sub === 'setup' || sub === 'timeframe' ? sub : 'overview' };
+}
+
+const goals = new LocalStorageGoalRepository();
+
+export function App({ services, status, demo, hasTrades }: { services: ImportServices; status: ConnectionStatus; demo: boolean; hasTrades: boolean }) {
   const fallback: View = hasTrades ? 'overview' : 'imports';
-  const [view, setView] = useState<View>(() => viewFromHash(fallback));
+  const [route, setRoute] = useState<Route>(() => routeFromHash(fallback));
 
   useEffect(() => {
     const onHash = () => {
-      setView(viewFromHash(fallback));
+      setRoute(routeFromHash(fallback));
       window.scrollTo({ top: 0 });
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, [fallback]);
 
+  const { view, sub } = route;
   return (
     <AppShell
       view={view}
@@ -46,9 +51,10 @@ export function App({
       }}
     >
       {view === 'imports' && demo && <ModeBanner status={status} />}
-      {view === 'overview' && <OverviewPage trades={services.trades} />}
+      {view === 'overview' && <OverviewPage trades={services.trades} goals={goals} />}
       {view === 'journal' && <JournalPage trades={services.trades} />}
-      {view === 'analysis' && <AnalysisPage trades={services.trades} />}
+      {view === 'performance' && (sub === 'overview' ? <PerformanceOverview trades={services.trades} /> : <DimensionPerformance key={sub} trades={services.trades} sub={sub} />)}
+      {view === 'missed' && <MissedTradesPage trades={services.trades} />}
       {view === 'imports' && <ImportWizard services={services} />}
     </AppShell>
   );

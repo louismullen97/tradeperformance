@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { monthGrid, type DayStats } from '../../domain/analytics/analytics';
-import { fmtAmount, fmtPct, fmtR, Icon } from '../../ui/primitives';
+import { monthGrid, performance, type DayStats } from '../../domain/analytics/analytics';
+import { fmtAmount, fmtPct, fmtR, fmtWinRate, Icon } from '../../ui/primitives';
 
 export type CalendarMetric = 'r' | 'pct' | 'amount';
 
@@ -54,6 +54,10 @@ export function TradeCalendar({ year, month, days, metric, selected, today, onSe
     { netR: 0, netPl: 0, netAmount: null as number | null, count: 0, wins: 0, losses: 0 },
   );
   const monthValue = metricValue(monthTotals, metric);
+  const monthPerf = performance(monthDays.flatMap((d) => d.trades));
+  const best = monthDays.length ? monthDays.reduce((a, d) => (metricValue(d, metric) ?? 0) > (metricValue(a, metric) ?? 0) ? d : a) : null;
+  const worst = monthDays.length ? monthDays.reduce((a, d) => (metricValue(d, metric) ?? 0) < (metricValue(a, metric) ?? 0) ? d : a) : null;
+  const shortDate = (iso: string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
   const tipDay = tip ? days.get(tip.date) : undefined;
 
   return (
@@ -67,12 +71,6 @@ export function TradeCalendar({ year, month, days, metric, selected, today, onSe
           <button className="icon-btn" aria-label="Next month" onClick={() => onMonthChange(1)}>
             <Icon name="arrowRight" />
           </button>
-          <span className="cal-month-total">
-            <span className={`num num--${tone(monthValue)}`}>{fmtMetric(monthValue, metric)}</span>
-            <span className="muted">
-              {monthTotals.count} trades · {monthTotals.wins}W {monthTotals.losses}L
-            </span>
-          </span>
         </div>
         <div className="segmented" role="radiogroup" aria-label="Calendar value">
           {metrics.map((m) => (
@@ -82,6 +80,39 @@ export function TradeCalendar({ year, month, days, metric, selected, today, onSe
           ))}
         </div>
       </header>
+
+      <dl className="month-stats" aria-label="Month statistics">
+        <div>
+          <dt className="eyebrow">Net</dt>
+          <dd className={`num num--${tone(monthValue)}`}>{fmtMetric(monthValue, metric)}</dd>
+        </div>
+        <div>
+          <dt className="eyebrow">Win rate</dt>
+          <dd>{fmtWinRate(monthPerf.winRate)}</dd>
+        </div>
+        <div>
+          <dt className="eyebrow">Trades</dt>
+          <dd>
+            {monthPerf.count} <span className="muted">in {monthDays.length} days</span>
+          </dd>
+        </div>
+        <div>
+          <dt className="eyebrow">Profit factor</dt>
+          <dd>{monthPerf.profitFactor === null ? '—' : monthPerf.profitFactor.toFixed(2)}</dd>
+        </div>
+        <div>
+          <dt className="eyebrow">Expectancy</dt>
+          <dd>{fmtR(monthPerf.avgR)}</dd>
+        </div>
+        <div>
+          <dt className="eyebrow">Best day</dt>
+          <dd>{best ? <>{fmtMetric(metricValue(best, metric), metric)} <span className="muted">{shortDate(best.date)}</span></> : '—'}</dd>
+        </div>
+        <div>
+          <dt className="eyebrow">Worst day</dt>
+          <dd>{worst ? <>{fmtMetric(metricValue(worst, metric), metric)} <span className="muted">{shortDate(worst.date)}</span></> : '—'}</dd>
+        </div>
+      </dl>
 
       <div className="cal" role="grid" aria-label="Daily results">
         <div className="cal__row cal__row--head" role="row">

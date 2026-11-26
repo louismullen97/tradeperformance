@@ -37,6 +37,8 @@ const properties: SourceProperty[] = [
   P('rating', 'Rating(1-5)', 'number'),
   P('outcome', 'Outcome', 'text', { nativeType: 'formula' }),
   P('mgmt', 'Management', 'select'),
+  P('status', 'Trade Status', 'select'),
+  P('reason', 'Missed Reason', 'select'),
   P('pos', 'Positive tags', 'multi_select'),
   P('neg', 'Negative tags', 'multi_select'),
   P('struct', 'Structure Tags', 'multi_select'),
@@ -58,6 +60,8 @@ const rec = (id: string, pair: string, result: number, pnl: number, r: number): 
     r: { kind: 'number', number: r },
     acct: { kind: 'multi_select', names: ['CTI 100k', 'Leveraged 100k'] },
     mgmt: { kind: 'select', name: 'HTF Swing' },
+    status: { kind: 'select', name: id === 'b' ? 'Missed' : 'Taken' },
+    ...(id === 'b' ? { reason: { kind: 'select' as const, name: 'Hesitation' } } : {}),
   },
 });
 const records = [rec('a', 'EUR AUD', 0.0075, 750, 3), rec('b', 'EUR JPY', -0.0025, -250, -1), rec('c', 'GBP CAD', 0.0056, 560, 2.24)];
@@ -79,6 +83,8 @@ describe('journal with Result (%) and PnL (amount)', () => {
     expect(mapped('negative_tags')).toBe('Negative tags');
     expect(mapped('tags')).toBe('Structure Tags');
     expect(mapped('execution_rating')).toBe('Rating(1-5)');
+    expect(mapped('trade_status')).toBe('Trade Status');
+    expect(mapped('missed_reason')).toBe('Missed Reason');
     const ev = evaluateMapping(config, properties, TRADE_FIELDS);
     expect(ev.fields.profit_loss_percentage.status).toBe('auto_matched');
     expect(ev.canProceed).toBe(true);
@@ -94,7 +100,9 @@ describe('journal with Result (%) and PnL (amount)', () => {
       profit_loss_amount: 750,
       result_r: 3,
       management_style: 'HTF Swing',
+      trade_status: 'taken',
     });
+    expect(report.records[1].values).toMatchObject({ trade_status: 'missed', missed_reason: 'Hesitation' });
   });
 
   it('warns when a money column is mapped to P/L %', () => {

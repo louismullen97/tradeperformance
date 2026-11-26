@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { TRADE_FIELDS } from '../../domain/fields/registry';
 import type { TradeRepository } from '../../domain/trades/repository';
+import { takenOnly } from '../../domain/trades/status';
 import { amountOf, outcomeOf, summarise, type Outcome } from '../../domain/trades/summary';
 import type { StandardTrade, TradeFieldValue } from '../../domain/trades/types';
 import { FilterSelect } from '../../ui/FilterSelect';
@@ -42,7 +43,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'trade_date', dir: -1 });
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const reload = useCallback(() => void repo.list().then(setTrades), [repo]);
+  const reload = useCallback(() => void repo.list().then((l) => setTrades(takenOnly(l))), [repo]);
   useEffect(reload, [reload]);
 
   const options = useMemo(() => {

@@ -37,6 +37,7 @@ export const DIMENSIONS: Dimension[] = [
   { key: 'direction', label: 'Direction', values: (t) => text(t, 'direction').map(titleCase) },
   { key: 'entry_type', label: 'Entry type', values: (t) => text(t, 'entry_type') },
   { key: 'account', label: 'Account', values: (t) => text(t, 'account') },
+  { key: 'missed_reason', label: 'Missed reason', values: (t) => text(t, 'missed_reason') },
   { key: 'weekday', label: 'Day of week', values: (t) => [weekdayOf(t.trade_date)], order: WEEKDAYS },
 ];
 

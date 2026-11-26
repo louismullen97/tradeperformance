@@ -15,6 +15,9 @@ import type { TradeRepository } from '../../domain/trades/repository';
 import { cumulativeR } from '../../domain/trades/summary';
 import type { StandardTrade } from '../../domain/trades/types';
 import { EquityCurve } from '../../ui/charts/EquityCurve';
+import { takenOnly } from '../../domain/trades/status';
+import { BreakdownTable } from './BreakdownTable';
+import { PerformanceTabs } from './PerformanceTabs';
 import { FilterSelect } from '../../ui/FilterSelect';
 import { Badge, fmtPct, fmtR, fmtWinRate, Icon, signTone, Stat } from '../../ui/primitives';
 
@@ -29,14 +32,14 @@ const PRESETS: { key: RangePreset; label: string }[] = [
 /** Dimensions offered as filters, in the order traders think about them. */
 const FILTER_KEYS = ['setup', 'timeframe', 'management_style', 'trading_session', 'currency_pair', 'direction', 'entry_type', 'account'];
 
-export function AnalysisPage({ trades: repo }: { trades: TradeRepository }) {
+export function PerformanceOverview({ trades: repo }: { trades: TradeRepository }) {
   const [all, setAll] = useState<StandardTrade[] | null>(null);
   const [preset, setPreset] = useState<RangePreset>('all');
   const [dims, setDims] = useState<Record<string, string>>({});
   const [groupBy, setGroupBy] = useState('setup');
   const [tagSource, setTagSource] = useState<string>('all');
 
-  useEffect(() => void repo.list().then(setAll), [repo]);
+  useEffect(() => void repo.list().then((l) => setAll(takenOnly(l))), [repo]);
 
   const dimensions = useMemo(() => availableDimensions(all ?? []), [all]);
   const filterDims = FILTER_KEYS.map((k) => dimensions.find((d) => d.key === k)).filter((d) => !!d);
@@ -51,7 +54,6 @@ export function AnalysisPage({ trades: repo }: { trades: TradeRepository }) {
   const groupDims = dimensions.filter((d) => !dims[d.key] || d.key === 'weekday');
   const activeGroup = groupDims.find((d) => d.key === groupBy) ?? groupDims[0];
   const rows = useMemo(() => (activeGroup ? breakdown(trades, activeGroup) : []), [trades, activeGroup]);
-  const maxAbsR = Math.max(1, ...rows.map((r) => Math.abs(r.stats.netR)));
 
   const tagSources = useMemo(() => availableTagSources(all ?? []), [all]);
   const tagRows = useMemo(
@@ -64,23 +66,7 @@ export function AnalysisPage({ trades: repo }: { trades: TradeRepository }) {
 
   return (
     <div className="page">
-      <header className="wizard__head">
-        <div className="wizard__title">
-          <span className="source-mark" aria-hidden="true">
-            <Icon name="chart" size={18} />
-          </span>
-          <div>
-            <div className="eyebrow">Analyse · Analysis</div>
-            <h1>Trades taken</h1>
-          </div>
-        </div>
-        <nav className="tabs" aria-label="Analysis type">
-          <span className="tab is-active">Trades taken</span>
-          <span className="tab" aria-disabled="true" title="Coming soon — needs a missed-trades log">
-            Missed trades <span className="soon soon--inline">Soon</span>
-          </span>
-        </nav>
-      </header>
+      <PerformanceTabs active="overview" />
 
       {all.length === 0 ? (
         <div className="panel empty-state">
@@ -156,70 +142,13 @@ export function AnalysisPage({ trades: repo }: { trades: TradeRepository }) {
                   ))}
                 </div>
               </header>
-              <div className="table-wrap">
-                <table className="preview-table breakdown-table">
-                  <thead>
-                    <tr>
-                      <th>{getDimension(activeGroup.key).label}</th>
-                      <th className="num">Trades</th>
-                      <th>Win rate</th>
-                      <th className="bar-col">Net R</th>
-                      <th className="num">Expectancy</th>
-                      <th className="num">P/L %</th>
-                      <th className="num">PF</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.value}>
-                        <td className="strong">
-                          {r.value}
-                          {r.stats.count < MIN_TAG_SAMPLE && <span className="low-sample" title={`Fewer than ${MIN_TAG_SAMPLE} trades — treat as anecdotal`}>low sample</span>}
-                        </td>
-                        <td className="num">
-                          {r.stats.count} <span className="muted">· {(r.share * 100).toFixed(0)}%</span>
-                        </td>
-                        <td>
-                          <div className="winrate">
-                            <span className="winrate__bar" aria-hidden="true">
-                              <span style={{ width: `${(r.stats.winRate ?? 0) * 100}%` }} />
-                            </span>
-                            <span className="num">{fmtWinRate(r.stats.winRate)}</span>
-                          </div>
-                        </td>
-                        <td className="bar-col">
-                          <DivergingBar value={r.stats.netR} max={maxAbsR} label={fmtR(r.stats.netR)} />
-                        </td>
-                        <td className={`num ${signTone(r.stats.avgR)}`}>{fmtR(r.stats.avgR)}</td>
-                        <td className={`num ${signTone(r.stats.netPl)}`}>{fmtPct(r.stats.netPl)}</td>
-                        <td className="num">{r.stats.profitFactor === null ? '—' : r.stats.profitFactor.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <BreakdownTable rows={rows} label={getDimension(activeGroup.key).label} />
             </section>
           )}
 
           <TagAnalysis rows={tagRows} sources={tagSources} source={tagSource} onSource={setTagSource} trades={trades} perfWins={perf.wins} perfLosses={perf.losses} />
         </>
       )}
-    </div>
-  );
-}
-
-/** Horizontal bar growing left (loss) or right (gain) from a shared zero line. */
-function DivergingBar({ value, max, label }: { value: number; max: number; label: string }) {
-  const pct = (Math.abs(value) / max) * 50;
-  return (
-    <div className="dbar" title={label}>
-      <span className="dbar__track" aria-hidden="true">
-        <span className="dbar__zero" />
-        {value !== 0 && (
-          <span className={`dbar__fill dbar__fill--${value > 0 ? 'gain' : 'loss'}`} style={value > 0 ? { left: '50%', width: `${pct}%` } : { right: '50%', width: `${pct}%` }} />
-        )}
-      </span>
-      <span className={`num ${signTone(value)}`}>{label}</span>
     </div>
   );
 }
