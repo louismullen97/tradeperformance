@@ -2,14 +2,29 @@ import type { ImportWizardModel } from '../useImportWizard';
 import { Badge, Icon, relativeTime, Spinner } from '../../../ui/primitives';
 
 export function SelectDatabaseStep({ wizard }: { wizard: ImportWizardModel }) {
-  const { datasets, savedIds, selectedId, setSelectedId, busy, startMapping, connector } = wizard;
+  const { datasets, savedIds, selectedId, setSelectedId, busy, startMapping, connector, targets, target, setTargetKey } = wizard;
   const loading = busy === 'datasets' && !datasets;
 
   return (
     <>
+      <section className="target-picker" aria-label="What are you importing?">
+        <span className="label">What are you importing?</span>
+        <div className="target-picker__options" role="radiogroup">
+          {targets.map((t) => (
+            <button key={t.key} role="radio" aria-checked={t.key === target.key} className={`target-option ${t.key === target.key ? 'is-active' : ''}`} onClick={() => setTargetKey(t.key)}>
+              <span className="target-option__radio" aria-hidden="true" />
+              <span>
+                <span className="target-option__label">{t.label}</span>
+                <span className="target-option__desc">{t.description}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <div className="step-intro">
         <div>
-          <h2 className="step-title">Choose a trade database</h2>
+          <h2 className="step-title">{target.key === 'flow' ? 'Choose your flow log database' : 'Choose a trade database'}</h2>
           <p className="step-sub">
             Databases shared with the Tradelens connection in {connector.label}. We read the structure and records — nothing is
             written back to {connector.label}.
@@ -78,7 +93,7 @@ export function SelectDatabaseStep({ wizard }: { wizard: ImportWizardModel }) {
 
       <footer className="action-bar">
         <span className="action-bar__hint">
-          {selectedId ? 'Next: match its properties to Tradelens fields.' : 'Select a database to continue.'}
+          {selectedId ? `Next: match its properties to ${target.label.toLowerCase()} fields.` : 'Select a database to continue.'}
         </span>
         <button className="btn btn--primary" disabled={!selectedId || busy !== null} onClick={() => void startMapping()}>
           {busy === 'loading' ? (

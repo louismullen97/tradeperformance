@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FieldDefinition } from '../../domain/fields/types';
-import {
-  buildImportBatch,
-  canInclude,
-  defaultDecision,
-  type ImportBatch,
-  type RecordDecision,
-  type TradeRepository,
-} from '../../domain/import/importService';
+import { canInclude, defaultDecision, type RecordDecision } from '../../domain/import/importService';
+import type { ImportResult, ImportTarget, ImportTargetKey } from '../../domain/import/targets';
 import { confirmFieldMapping, createSuggestedConfig, setFieldMapping } from '../../domain/mapping/config';
 import { evaluateMapping } from '../../domain/mapping/evaluate';
 import { reconcileMapping, type ReconcileChange } from '../../domain/mapping/reconcile';
@@ -19,14 +12,17 @@ import { validateRecords } from '../../domain/validation/validate';
 export interface ImportServices {
   connector: DataSourceConnector;
   mappings: MappingConfigRepository;
-  trades: TradeRepository;
-  fields: readonly FieldDefinition[];
+  /** What can be imported (trade journal, flow log, …). The first is the default. */
+  targets: ImportTarget[];
 }
 
 export type WizardStep = 'select' | 'map' | 'validate' | 'done';
 
 export function useImportWizard(services: ImportServices) {
-  const { connector, mappings, trades, fields } = services;
+  const { connector, mappings, targets } = services;
+  const [targetKey, setTargetKey] = useState<ImportTargetKey>(targets[0].key);
+  const target = targets.find((t) => t.key === targetKey) ?? targets[0];
+  const fields = target.fields;
 
   const [step, setStep] = useState<WizardStep>('select');
   const [datasets, setDatasets] = useState<SourceDataset[] | null>(null);
@@ -37,7 +33,7 @@ export function useImportWizard(services: ImportServices) {
   const [config, setConfig] = useState<MappingConfig | null>(null);
   const [restored, setRestored] = useState<{ changes: ReconcileChange[]; schemaChanged: boolean } | null>(null);
   const [decisions, setDecisions] = useState<Record<string, RecordDecision>>({});
-  const [batch, setBatch] = useState<ImportBatch | null>(null);
+  const [batch, setBatch] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState<null | 'datasets' | 'loading' | 'importing'>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +59,7 @@ export function useImportWizard(services: ImportServices) {
     setBusy('datasets');
     setError(null);
     try {
-      const [list, ids] = await Promise.all([connector.listDatasets(), mappings.listDatasetIds(connector.kind)]);
+      const [list, ids] = await Promise.all([connector.listDatasets(), mappings.listDatasetIds(connector.kind, targetKey)]);
       setDatasets(list);
       setSavedIds(new Set(ids));
       void loadMissingCounts(list);
@@ -72,7 +68,7 @@ export function useImportWizard(services: ImportServices) {
     } finally {
       setBusy(null);
     }
-  }, [connector, mappings, loadMissingCounts]);
+  }, [connector, mappings, loadMissingCounts, targetKey]);
 
   useEffect(() => {
     void loadDatasets();
@@ -89,7 +85,7 @@ export function useImportWizard(services: ImportServices) {
       const [nextSchema, nextRecords, saved] = await Promise.all([
         connector.getSchema(dataset.id),
         connector.fetchRecords(dataset.id),
-        mappings.find(dataset.kind, dataset.id),
+        mappings.find(dataset.kind, dataset.id, targetKey),
       ]);
       setSchema(nextSchema);
       setRecords(nextRecords);
@@ -99,7 +95,7 @@ export function useImportWizard(services: ImportServices) {
         setConfig(result.config);
         setRestored({ changes: result.changes, schemaChanged: result.schemaChanged });
       } else {
-        setConfig(createSuggestedConfig(dataset, nextSchema, fields));
+        setConfig(createSuggestedConfig(dataset, nextSchema, fields, targetKey));
         setRestored(null);
       }
       setStep('map');
@@ -108,7 +104,7 @@ export function useImportWizard(services: ImportServices) {
     } finally {
       setBusy(null);
     }
-  }, [connector, dataset, fields, mappings]);
+  }, [connector, dataset, fields, mappings, targetKey]);
 
   const evaluation = useMemo(
     () => (config && schema ? evaluateMapping(config, schema.properties, fields) : null),
@@ -130,10 +126,10 @@ export function useImportWizard(services: ImportServices) {
 
   const resetToSuggestions = useCallback(() => {
     if (!dataset || !schema || !config) return;
-    const fresh = createSuggestedConfig(dataset, schema, fields);
+    const fresh = createSuggestedConfig(dataset, schema, fields, targetKey);
     setConfig({ ...fresh, id: config.id, createdAt: config.createdAt });
     setRestored(null);
-  }, [config, dataset, fields, schema]);
+  }, [config, dataset, fields, schema, targetKey]);
 
   // Validation is re-derived from the mapping, so going back and changing a
   // mapping always yields a fresh report.
@@ -178,8 +174,7 @@ export function useImportWizard(services: ImportServices) {
     setBusy('importing');
     setError(null);
     try {
-      const result = buildImportBatch(report, decisions, dataset, config, fields);
-      await trades.upsertMany(result.trades);
+      const result = await target.commit(report, decisions, dataset, config);
       await mappings.save(config);
       setBatch(result);
       setStep('done');
@@ -188,7 +183,7 @@ export function useImportWizard(services: ImportServices) {
     } finally {
       setBusy(null);
     }
-  }, [config, dataset, decisions, fields, mappings, report, trades]);
+  }, [config, dataset, decisions, mappings, report, target]);
 
   const restart = useCallback(() => {
     setStep('select');
@@ -203,6 +198,10 @@ export function useImportWizard(services: ImportServices) {
 
   return {
     fields,
+    target,
+    targets,
+    targetKey,
+    setTargetKey,
     connector,
     step,
     setStep,

@@ -16,7 +16,7 @@ import type { StandardTrade } from '../../domain/trades/types';
 import { LineChart } from '../../ui/charts/LineChart';
 import { fmtPct, fmtR, fmtWinRate, Icon } from '../../ui/primitives';
 import { BreakdownTable } from './BreakdownTable';
-import { PerformanceTabs, type PerformanceSub } from './PerformanceTabs';
+import { PerformanceTabs } from './PerformanceTabs';
 
 const PRESETS: { key: RangePreset; label: string }[] = [
   { key: 'all', label: 'All time' },
@@ -54,7 +54,7 @@ function Highlight({ title, row, foot, onPick, picked }: { title: string; row: B
   );
 }
 
-export function DimensionPerformance({ trades: repo, sub }: { trades: TradeRepository; sub: Exclude<PerformanceSub, 'overview'> }) {
+export function DimensionPerformance({ trades: repo, sub }: { trades: TradeRepository; sub: 'setup' | 'timeframe' }) {
   const dim = getDimension(sub);
   const [all, setAll] = useState<StandardTrade[] | null>(null);
   const [preset, setPreset] = useState<RangePreset>('all');

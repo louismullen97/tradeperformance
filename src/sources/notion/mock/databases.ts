@@ -249,4 +249,52 @@ function propChallenge(): MockNotionDatabase {
   return { dataSource, pages };
 }
 
-export const MOCK_DATABASES: MockNotionDatabase[] = [tradingJournal(), fxTradeLog(), propChallenge()];
+// ─────────────────────────────────────────────────────────────────────────
+// 4. "Flow Log" — Flow Zone check-ins (not trades): 1–3 per weekday.
+// ─────────────────────────────────────────────────────────────────────────
+function flowLog(): MockNotionDatabase {
+  const slug = 'flow-log';
+  const id = notionId(slug);
+  const P = { name: 'title', date: 'Fd%3Aa', tod: 'Ft%3Ab', flow: 'Ff%3Ac', pos: 'Fp%3Ad', neg: 'Fn%3Ae', notes: 'Fo%3Af' };
+  const dataSource: NotionDataSource = {
+    object: 'data_source',
+    id,
+    parent: { type: 'database_id', database_id: notionId(`${slug}-db`) },
+    in_trash: false,
+    title: rt('Flow Log'),
+    icon: { type: 'emoji', emoji: '🧘' },
+    last_edited_time: '2026-03-19T18:00:00.000Z',
+    properties: {
+      Name: S.title(P.name, 'Name'),
+      Date: S.date(P.date, 'Date'),
+      'Time of Day': S.select(P.tod, 'Time of Day', ['Morning', 'Midday', 'Afternoon']),
+      Flow: S.number(P.flow, 'Flow'),
+      'Positive Flow': S.multi(P.pos, 'Positive Flow', ['Good sleep', 'Exercise', 'Prepared plan']),
+      'Negative Flow': S.multi(P.neg, 'Negative Flow', ['Poor sleep', 'Distractions', 'After a loss']),
+      Notes: S.text(P.notes, 'Notes'),
+    },
+  };
+  const pages: NotionPage[] = [];
+  let i = 0;
+  for (let d = new Date(Date.UTC(2026, 0, 5)); d <= new Date(Date.UTC(2026, 2, 19)); d.setUTCDate(d.getUTCDate() + 1)) {
+    if ([0, 6].includes(d.getUTCDay())) continue;
+    const date = d.toISOString().slice(0, 10);
+    for (const slot of ['Morning', 'Afternoon']) {
+      const score = 3 + ((i * 7 + d.getUTCDate()) % 7);
+      pages.push(
+        page(id, slug, i++, `${slot} check-in`, {
+          Name: V.title(P.name, `${slot} check-in`),
+          Date: V.date(P.date, date),
+          'Time of Day': V.select(P.tod, slot),
+          Flow: V.number(P.flow, score),
+          'Positive Flow': V.multi(P.pos, score >= 7 ? ['Good sleep'] : []),
+          'Negative Flow': V.multi(P.neg, score <= 4 ? ['Poor sleep'] : []),
+          Notes: V.text(P.notes, null),
+        }, `${date}T18:00:00.000Z`),
+      );
+    }
+  }
+  return { dataSource, pages };
+}
+
+export const MOCK_DATABASES: MockNotionDatabase[] = [tradingJournal(), fxTradeLog(), propChallenge(), flowLog()];

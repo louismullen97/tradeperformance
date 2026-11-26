@@ -4,7 +4,7 @@ import { psychologyBreakdown, psychologyTagsOf, ratingBreakdown, ratingByOutcome
 import type { TradeRepository } from '../../domain/trades/repository';
 import { takenOnly } from '../../domain/trades/status';
 import type { StandardTrade } from '../../domain/trades/types';
-import { PageHeader } from '../../ui/PageHeader';
+import { PsychologyTabs } from './PsychologyTabs';
 import { fmtR, fmtWinRate, Icon, signTone, Stat } from '../../ui/primitives';
 import { TagAnalysis } from '../performance/PerformanceOverview';
 
@@ -45,7 +45,7 @@ export function PsychologyPage({ trades: repo }: { trades: TradeRepository }) {
 
   return (
     <div className="page">
-      <PageHeader title="Psychology" description="How your state of mind relates to winners, losers and the trades you didn't take." />
+      <PsychologyTabs active="overview" description="How your state of mind relates to winners, losers and the trades you didn't take." />
 
       {rows.length === 0 ? (
         <div className="empty-state panel">

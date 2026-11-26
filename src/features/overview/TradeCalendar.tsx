@@ -16,7 +16,7 @@ export function fmtMetric(v: number | null, m: CalendarMetric) {
   return m === 'r' ? fmtR(v) : m === 'pct' ? fmtPct(v) : fmtAmount(v);
 }
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 const monthFmt = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 const longDate = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const shortDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -44,10 +44,17 @@ interface Props {
 }
 
 export function TradeCalendar({ year, month, days, metric, metrics, selected, today, news, onSelect, onMonthChange, onToday, onMetricChange }: Props) {
-  const weeks = monthGrid(year, month);
+  // Trading week only: weekend columns are hidden, but any weekend trades still
+  // count towards the weekly total and the month summary.
+  const allWeeks = monthGrid(year, month);
+  const weeks = allWeeks.filter((w) => w.slice(0, 5).some(Boolean));
+  const weekendTrades = allWeeks
+    .flatMap((w) => w.slice(5))
+    .filter((d): d is string => !!d)
+    .reduce((a, d) => a + (days.get(d)?.count ?? 0), 0);
   const [tip, setTip] = useState<{ date: string; x: number; y: number } | null>(null);
 
-  const monthDays = weeks
+  const monthDays = allWeeks
     .flat()
     .filter((d): d is string => !!d)
     .map((d) => days.get(d))
@@ -146,6 +153,7 @@ export function TradeCalendar({ year, month, days, metric, metrics, selected, to
         </div>
 
         {weeks.map((week, wi) => {
+          // Week totals include the (hidden) weekend days of that week.
           const wk = week.map((d) => (d ? days.get(d) : undefined)).filter((d): d is DayStats => !!d);
           const weekTotals = {
             netR: wk.reduce((a, d) => a + d.netR, 0),
@@ -156,7 +164,7 @@ export function TradeCalendar({ year, month, days, metric, metrics, selected, to
           const wv = metricValue(weekTotals, metric);
           return (
             <div key={wi} className="calendar__row" role="row">
-              {week.map((date, di) => {
+              {week.slice(0, 5).map((date, di) => {
                 if (!date) return <div key={di} className="day day--outside" role="gridcell" aria-hidden="true" />;
                 const d = days.get(date);
                 const v = d ? metricValue(d, metric) : null;
@@ -174,7 +182,7 @@ export function TradeCalendar({ year, month, days, metric, metrics, selected, to
                     role="gridcell"
                     aria-label={label}
                     aria-pressed={selected === date}
-                    className={`day ${d ? `day--${tone(v)}` : 'day--empty'} ${selected === date ? 'is-selected' : ''} ${date === today ? 'is-today' : ''} ${di >= 5 ? 'day--weekend' : ''}`}
+                    className={`day ${d ? `day--${tone(v)}` : 'day--empty'} ${selected === date ? 'is-selected' : ''} ${date === today ? 'is-today' : ''}`}
                     onClick={() => onSelect(date)}
                     onPointerEnter={(e) => (d || dayNews) && setTip({ date, x: e.currentTarget.offsetLeft + e.currentTarget.offsetWidth / 2, y: e.currentTarget.offsetTop })}
                     onPointerLeave={() => setTip(null)}
@@ -246,9 +254,18 @@ export function TradeCalendar({ year, month, days, metric, metrics, selected, to
         )}
       </div>
 
-      {monthHasNews && (
+      {(monthHasNews || weekendTrades > 0) && (
         <footer className="calendar__legend">
-          <span className="news-dot news-dot--inline" aria-hidden="true" /> High-impact economic news
+          {monthHasNews && (
+            <span>
+              <span className="news-dot news-dot--inline" aria-hidden="true" /> High-impact economic news
+            </span>
+          )}
+          {weekendTrades > 0 && (
+            <span>
+              {weekendTrades} weekend trade{weekendTrades === 1 ? '' : 's'} included in weekly totals
+            </span>
+          )}
         </footer>
       )}
     </section>

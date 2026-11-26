@@ -2,7 +2,8 @@ import { outcomeOf } from '../trades/summary';
 import type { StandardTrade } from '../trades/types';
 
 export type GoalMetric = 'trading_days' | 'net_r' | 'net_pl' | 'win_rate' | 'consistency';
-export type GoalPeriod = 'week' | 'month';
+/** `all` = no time limit: progress counts every trade since the first one. */
+export type GoalPeriod = 'week' | 'month' | 'all';
 
 export interface Goal {
   id: string;
@@ -29,7 +30,7 @@ export const GOAL_META: Record<GoalMetric, { label: string; unit: string; help: 
   },
 };
 
-export type GoalStatus = 'achieved' | 'on_track' | 'behind' | 'breached' | 'no_data';
+export type GoalStatus = 'achieved' | 'on_track' | 'behind' | 'in_progress' | 'breached' | 'no_data';
 
 export interface GoalPoint {
   date: string;
@@ -60,8 +61,9 @@ const isWeekday = (s: string) => {
 };
 const round = (n: number, dp = 4) => Math.round(n * 10 ** dp) / 10 ** dp;
 
-export function periodBounds(period: GoalPeriod, today: string): { start: string; end: string } {
+export function periodBounds(period: GoalPeriod, today: string, firstTrade?: string): { start: string; end: string } {
   const d = new Date(`${today}T00:00:00Z`);
+  if (period === 'all') return { start: firstTrade && firstTrade < today ? firstTrade : today, end: today };
   if (period === 'week') {
     const start = addDays(today, -((d.getUTCDay() + 6) % 7));
     return { start, end: addDays(start, 6) };
@@ -104,10 +106,13 @@ function valueAt(metric: GoalMetric, trades: StandardTrade[]): number | null {
 }
 
 export function goalProgress(goal: Goal, allTrades: StandardTrade[], today: string): GoalProgress {
-  const { start, end } = periodBounds(goal.period, today);
+  const first = allTrades.reduce((a, t) => (!a || t.trade_date < a ? t.trade_date : a), '');
+  const { start, end } = periodBounds(goal.period, today, first || undefined);
   const inPeriod = allTrades.filter((t) => t.trade_date >= start && t.trade_date <= end);
   const days = daysBetween(start, end);
   const cumulative = goal.metric === 'trading_days' || goal.metric === 'net_r' || goal.metric === 'net_pl';
+  // Without a deadline there's no pace to keep: the target is a fixed line.
+  const paced = cumulative && goal.period !== 'all';
   const weekdays = days.filter(isWeekday);
   const paceFor = (date: string) => {
     const elapsed = weekdays.filter((d) => d <= date).length;
@@ -117,11 +122,11 @@ export function goalProgress(goal: Goal, allTrades: StandardTrade[], today: stri
   const series: GoalPoint[] = days.map((date) => ({
     date,
     actual: date <= today ? valueAt(goal.metric, inPeriod.filter((t) => t.trade_date <= date)) : null,
-    target: cumulative ? paceFor(date) : goal.target,
+    target: paced ? paceFor(date) : goal.target,
   }));
 
   const current = valueAt(goal.metric, inPeriod);
-  const pace = cumulative ? paceFor(today < end ? today : end) : null;
+  const pace = paced ? paceFor(today < end ? today : end) : null;
   let status: GoalStatus;
   let ratio: number;
 
@@ -135,7 +140,7 @@ export function goalProgress(goal: Goal, allTrades: StandardTrade[], today: stri
     ratio = goal.target > 0 ? Math.max(0, current / goal.target) : 1;
     if (current >= goal.target) status = 'achieved';
     else if (pace !== null) status = current >= pace ? 'on_track' : 'behind';
-    else status = 'behind';
+    else status = goal.period === 'all' ? 'in_progress' : 'behind';
   }
 
   return { goal, start, end, current, pace, ratio: Math.min(ratio, 1), status, series };

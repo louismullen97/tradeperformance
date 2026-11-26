@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { canInclude } from '../../../domain/import/importService';
 import type { IssueCode, RecordStatus, RecordValidation } from '../../../domain/validation/types';
 import { ISSUE_LABEL } from '../../../domain/validation/types';
+import type { PreviewColumn } from '../../../domain/import/targets';
 import type { ImportWizardModel } from '../useImportWizard';
 import {
   Badge,
@@ -20,14 +21,15 @@ import {
 type Filter = 'all' | RecordStatus | IssueCode;
 const PAGE = 20;
 
-const COLUMNS: { key: string; label: string; fmt: (v: unknown) => string; num?: boolean; tone?: boolean }[] = [
-  { key: 'trade_date', label: 'Date', fmt: (v) => fmtDate(v as string) },
-  { key: 'currency_pair', label: 'Pair', fmt: (v) => (v as string) ?? '—' },
-  { key: 'setup', label: 'Setup', fmt: (v) => (v as string) ?? '—' },
-  { key: 'risk_percentage', label: 'Risk', fmt: fmtRisk, num: true },
-  { key: 'result_r', label: 'Result', fmt: fmtR, num: true, tone: true },
-  { key: 'profit_loss_percentage', label: 'P/L', fmt: fmtPct, num: true, tone: true },
-];
+type Col = { key: string; label: string; fmt: (v: unknown) => string; num?: boolean; tone?: boolean };
+const FORMAT: Record<PreviewColumn['format'], Pick<Col, 'fmt' | 'num' | 'tone'>> = {
+  date: { fmt: (v) => fmtDate(v as string) },
+  text: { fmt: (v) => (v as string) ?? '—' },
+  risk: { fmt: fmtRisk, num: true },
+  r: { fmt: fmtR, num: true, tone: true },
+  pct: { fmt: fmtPct, num: true, tone: true },
+  number: { fmt: (v) => (typeof v === 'number' ? String(v) : '—'), num: true },
+};
 
 function RecordDetail({ r, wizard }: { r: RecordValidation; wizard: ImportWizardModel }) {
   const mapped = wizard.fields.filter((f) => r.cells[f.key]);
@@ -92,6 +94,7 @@ function RecordDetail({ r, wizard }: { r: RecordValidation; wizard: ImportWizard
 }
 
 export function ValidateStep({ wizard }: { wizard: ImportWizardModel }) {
+  const COLUMNS: Col[] = wizard.target.preview.map((c) => ({ key: c.key, label: c.label, ...FORMAT[c.format] }));
   const { report, decisions, includedCount, dataset, busy } = wizard;
   const [filter, setFilter] = useState<Filter>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -335,7 +338,7 @@ export function ValidateStep({ wizard }: { wizard: ImportWizardModel }) {
             </>
           ) : (
             <>
-              Import {includedCount} trades <Icon name="arrowRight" />
+              Import {includedCount} {wizard.target.noun} <Icon name="arrowRight" />
             </>
           )}
         </button>

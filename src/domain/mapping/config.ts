@@ -16,12 +16,13 @@ export function createSuggestedConfig(
   dataset: SourceDataset,
   schema: SourceSchema,
   fields: readonly FieldDefinition[],
+  target?: string,
 ): MappingConfig {
   const ts = nowIso();
   return {
     id: newId(),
     schemaVersion: 1,
-    source: { kind: dataset.kind, datasetId: dataset.id, datasetName: dataset.name },
+    source: { kind: dataset.kind, datasetId: dataset.id, datasetName: dataset.name, ...(target && target !== 'trades' ? { target } : {}) },
     schemaFingerprint: schema.fingerprint,
     entries: suggestMappings(fields, schema.properties),
     createdAt: ts,

@@ -21,7 +21,8 @@ export interface MappingEntry {
 export interface MappingConfig {
   id: string;
   schemaVersion: 1;
-  source: { kind: SourceKind; datasetId: string; datasetName: string };
+  /** `target` is the import type (absent = trades, for configs saved before targets existed). */
+  source: { kind: SourceKind; datasetId: string; datasetName: string; target?: string };
   schemaFingerprint: string;
   entries: Record<string, MappingEntry>;
   createdAt: string;
