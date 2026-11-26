@@ -1,23 +1,27 @@
 import { useState, type ReactNode } from 'react';
 import { Icon, type IconName } from '../ui/primitives';
 
-const NAV: { section: string; items: { label: string; icon: IconName; active?: boolean }[] }[] = [
+export type View = 'journal' | 'imports';
+
+const NAV: { section: string; items: { label: string; icon: IconName; view?: View }[] }[] = [
   {
     section: 'Analyse',
     items: [
       { label: 'Overview', icon: 'grid' },
-      { label: 'Journal', icon: 'book' },
+      { label: 'Journal', icon: 'book', view: 'journal' },
       { label: 'Analytics', icon: 'chart' },
     ],
   },
   {
     section: 'Data',
     items: [
-      { label: 'Imports', icon: 'upload', active: true },
+      { label: 'Imports', icon: 'upload', view: 'imports' },
       { label: 'Data sources', icon: 'database' },
     ],
   },
 ];
+
+const CRUMBS: Record<View, string[]> = { journal: ['Analyse', 'Journal'], imports: ['Data', 'Imports', 'Notion'] };
 
 function Logo() {
   return (
@@ -34,7 +38,7 @@ export interface ConnectionInfo {
   subtitle: string;
 }
 
-export function AppShell({ children, connection }: { children: ReactNode; connection: ConnectionInfo }) {
+export function AppShell({ children, connection, view }: { children: ReactNode; connection: ConnectionInfo; view: View }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -48,20 +52,27 @@ export function AppShell({ children, connection }: { children: ReactNode; connec
           {NAV.map((group) => (
             <div key={group.section} className="sidebar__group">
               <div className="sidebar__section">{group.section}</div>
-              {group.items.map((item) => (
-                <a
-                  key={item.label}
-                  href="#"
-                  onClick={(e) => e.preventDefault()}
-                  className={`sidebar__link ${item.active ? 'is-active' : ''}`}
-                  aria-current={item.active ? 'page' : undefined}
-                  aria-disabled={!item.active}
-                  title={item.active ? undefined : 'Coming soon'}
-                >
-                  <Icon name={item.icon} />
-                  {item.label}
-                </a>
-              ))}
+              {group.items.map((item) => {
+                const active = item.view === view;
+                return (
+                  <a
+                    key={item.label}
+                    href={item.view ? `#/${item.view}` : '#'}
+                    onClick={(e) => {
+                      if (!item.view) e.preventDefault();
+                      setOpen(false);
+                    }}
+                    className={`sidebar__link ${active ? 'is-active' : ''}`}
+                    aria-current={active ? 'page' : undefined}
+                    aria-disabled={!item.view}
+                    title={item.view ? undefined : 'Coming soon'}
+                  >
+                    <Icon name={item.icon} />
+                    {item.label}
+                    {!item.view && <span className="soon">Soon</span>}
+                  </a>
+                );
+              })}
             </div>
           ))}
         </nav>
@@ -86,11 +97,12 @@ export function AppShell({ children, connection }: { children: ReactNode; connec
             <Icon name="menu" />
           </button>
           <nav className="crumbs" aria-label="Breadcrumb">
-            <span>Data</span>
-            <Icon name="chevronRight" size={12} />
-            <span>Imports</span>
-            <Icon name="chevronRight" size={12} />
-            <strong>Notion</strong>
+            {CRUMBS[view].map((c, i, all) => (
+              <span key={c} className="crumbs__item">
+                {i === all.length - 1 ? <strong>{c}</strong> : c}
+                {i < all.length - 1 && <Icon name="chevronRight" size={12} />}
+              </span>
+            ))}
           </nav>
           <div className="topbar__right">
             <span className="env-pill">

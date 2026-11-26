@@ -67,10 +67,13 @@ export function CompleteStep({ wizard }: { wizard: ImportWizardModel }) {
       )}
 
       <footer className="action-bar">
-        <span className="action-bar__hint">Analytics will update once the engine processes this batch.</span>
-        <button className="btn btn--primary" onClick={wizard.restart}>
+        <span className="action-bar__hint">Trades are saved in this browser. Re-importing updates them rather than duplicating.</span>
+        <button className="btn" onClick={wizard.restart}>
           Import another database
         </button>
+        <a className="btn btn--primary" href="#/journal">
+          View journal <Icon name="arrowRight" />
+        </a>
       </footer>
     </>
   );

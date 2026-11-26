@@ -2,6 +2,7 @@ import type { FieldDefinition } from '../fields/types';
 import type { MappingConfig } from '../mapping/types';
 import type { SourceDataset, SourceValue } from '../source/types';
 import type { StandardTrade } from '../trades/types';
+
 import { tradeId } from '../trades/types';
 import type { RecordStatus, RecordValidation, ValidationReport } from '../validation/types';
 
@@ -110,25 +111,4 @@ export function buildImportBatch(
   };
 }
 
-/** Destination for standardised trades. In-memory for now; an API client later. */
-export interface TradeRepository {
-  upsertMany(trades: StandardTrade[]): Promise<{ inserted: number; updated: number }>;
-  count(): Promise<number>;
-}
-
-export class InMemoryTradeRepository implements TradeRepository {
-  private readonly trades = new Map<string, StandardTrade>();
-  async upsertMany(trades: StandardTrade[]) {
-    let inserted = 0;
-    let updated = 0;
-    for (const t of trades) {
-      if (this.trades.has(t.id)) updated++;
-      else inserted++;
-      this.trades.set(t.id, t);
-    }
-    return { inserted, updated };
-  }
-  async count() {
-    return this.trades.size;
-  }
-}
+export type { TradeRepository } from '../trades/repository';

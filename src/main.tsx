@@ -1,12 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AppShell } from './app/AppShell';
-import { ModeBanner } from './app/ModeBanner';
+import { App } from './app/App';
 import { TRADE_FIELDS } from './domain/fields/registry';
-import { InMemoryTradeRepository } from './domain/import/importService';
+import { LocalStorageTradeRepository } from './domain/trades/repository';
 import { LocalStorageMappingRepository } from './domain/mapping/repository';
 import type { DataSourceConnector } from './domain/source/types';
-import { ImportWizard } from './features/import-wizard/ImportWizard';
 import type { ImportServices } from './features/import-wizard/useImportWizard';
 import { HttpConnector, type ConnectionStatus } from './sources/http/httpConnector';
 import { MockNotionConnector } from './sources/notion/mockConnector';
@@ -39,22 +37,15 @@ async function main() {
   const services: ImportServices = {
     connector,
     mappings: new LocalStorageMappingRepository(),
-    trades: new InMemoryTradeRepository(),
+    trades: new LocalStorageTradeRepository(),
     fields: TRADE_FIELDS,
   };
 
+  const hasTrades = (await services.trades.count()) > 0;
+
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <AppShell
-        connection={{
-          live: !demo,
-          title: demo ? 'Notion · Demo workspace' : `Notion · ${status.workspace ?? 'Connected'}`,
-          subtitle: demo ? 'Demo data' : 'Live · read-only',
-        }}
-      >
-        {demo && <ModeBanner status={status} />}
-        <ImportWizard services={services} />
-      </AppShell>
+      <App services={services} status={status} demo={demo} hasTrades={hasTrades} />
     </StrictMode>,
   );
 }
