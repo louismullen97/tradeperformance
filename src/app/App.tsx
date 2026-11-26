@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { AnalysisPage } from '../features/analysis/AnalysisPage';
 import { JournalPage } from '../features/journal/JournalPage';
+import { OverviewPage } from '../features/overview/OverviewPage';
 import { ImportWizard } from '../features/import-wizard/ImportWizard';
 import type { ImportServices } from '../features/import-wizard/useImportWizard';
 import type { ConnectionStatus } from '../sources/http/httpConnector';
@@ -8,7 +10,7 @@ import { ModeBanner } from './ModeBanner';
 
 function viewFromHash(fallback: View): View {
   const h = location.hash.replace(/^#\/?/, '');
-  return h === 'journal' || h === 'imports' ? h : fallback;
+  return (['overview', 'journal', 'analysis', 'imports'] as const).find((v) => v === h) ?? fallback;
 }
 
 export function App({
@@ -22,7 +24,7 @@ export function App({
   demo: boolean;
   hasTrades: boolean;
 }) {
-  const fallback: View = hasTrades ? 'journal' : 'imports';
+  const fallback: View = hasTrades ? 'overview' : 'imports';
   const [view, setView] = useState<View>(() => viewFromHash(fallback));
 
   useEffect(() => {
@@ -44,7 +46,10 @@ export function App({
       }}
     >
       {view === 'imports' && demo && <ModeBanner status={status} />}
-      {view === 'journal' ? <JournalPage trades={services.trades} /> : <ImportWizard services={services} />}
+      {view === 'overview' && <OverviewPage trades={services.trades} />}
+      {view === 'journal' && <JournalPage trades={services.trades} />}
+      {view === 'analysis' && <AnalysisPage trades={services.trades} />}
+      {view === 'imports' && <ImportWizard services={services} />}
     </AppShell>
   );
 }

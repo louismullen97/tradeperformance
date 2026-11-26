@@ -3,7 +3,8 @@ import { TRADE_FIELDS } from '../../domain/fields/registry';
 import type { TradeRepository } from '../../domain/trades/repository';
 import { amountOf, outcomeOf, summarise, type Outcome } from '../../domain/trades/summary';
 import type { StandardTrade, TradeFieldValue } from '../../domain/trades/types';
-import { Badge, fmtDate, fmtPct, fmtR, fmtRisk, Icon, signTone, Stat } from '../../ui/primitives';
+import { FilterSelect } from '../../ui/FilterSelect';
+import { Badge, fmtAmount, fmtDate, fmtPct, fmtR, fmtRisk, Icon, signTone, Stat } from '../../ui/primitives';
 
 type SortKey = 'trade_date' | 'result_r' | 'profit_loss_percentage' | 'risk_percentage';
 type Filters = { pair: string; setup: string; management: string; account: string; outcome: '' | Outcome; dataset: string };
@@ -17,8 +18,6 @@ const optionalText = (t: StandardTrade, key: string) => {
   return typeof v === 'string' ? v : null;
 };
 
-const amountFmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 });
-const fmtAmount = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : ''}${amountFmt.format(n)}`);
 
 const uniq = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => !!x))].sort();
 
@@ -349,34 +348,5 @@ function JournalHead({ count }: { count: number }) {
         </div>
       </div>
     </header>
-  );
-}
-
-function FilterSelect({
-  label,
-  value,
-  options,
-  labels,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  labels?: Record<string, string>;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <label className={`filter ${value ? 'is-set' : ''}`}>
-      <span className="filter__label">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">All</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {labels?.[o] ?? o}
-          </option>
-        ))}
-      </select>
-      <Icon name="chevronDown" size={12} />
-    </label>
   );
 }

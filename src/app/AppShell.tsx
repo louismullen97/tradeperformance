@@ -1,15 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { Icon, type IconName } from '../ui/primitives';
 
-export type View = 'journal' | 'imports';
+export type View = 'overview' | 'journal' | 'analysis' | 'imports';
 
 const NAV: { section: string; items: { label: string; icon: IconName; view?: View }[] }[] = [
   {
     section: 'Analyse',
     items: [
-      { label: 'Overview', icon: 'grid' },
+      { label: 'Overview', icon: 'grid', view: 'overview' },
       { label: 'Journal', icon: 'book', view: 'journal' },
-      { label: 'Analytics', icon: 'chart' },
+      { label: 'Analysis', icon: 'chart', view: 'analysis' },
+      { label: 'Missed trades', icon: 'search' },
     ],
   },
   {
@@ -21,7 +22,12 @@ const NAV: { section: string; items: { label: string; icon: IconName; view?: Vie
   },
 ];
 
-const CRUMBS: Record<View, string[]> = { journal: ['Analyse', 'Journal'], imports: ['Data', 'Imports', 'Notion'] };
+const CRUMBS: Record<View, string[]> = {
+  overview: ['Analyse', 'Overview'],
+  journal: ['Analyse', 'Journal'],
+  analysis: ['Analyse', 'Analysis'],
+  imports: ['Data', 'Imports', 'Notion'],
+};
 
 function Logo() {
   return (

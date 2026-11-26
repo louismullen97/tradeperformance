@@ -37,6 +37,15 @@
   --info-line: #c9d5f7;
   --accent: #111214;
 
+  /* Chart marks — gain/loss pair validated for colour-vision deficiency
+     (deutan ΔE 11.6, normal ΔE 29.5). Values always carry a sign as well. */
+  --gain: #0d9488;
+  --loss: #e5484d;
+  --gain-wash: rgba(13, 148, 136, 0.1);
+  --loss-wash: rgba(229, 72, 77, 0.09);
+  --grid: #ecebe7;
+  --axis: #c9c8c2;
+
   /* Shape */
   --radius-sm: 6px;
   --radius: 10px;

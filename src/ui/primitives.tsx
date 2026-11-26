@@ -174,6 +174,16 @@ export function fmtR(n: unknown) {
   return typeof n === 'number' ? `${n > 0 ? '+' : ''}${n.toFixed(2)}R` : '—';
 }
 
+const amountFmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 });
+/** Money amount in account currency (no symbol — the currency isn't known). */
+export function fmtAmount(n: number | null | undefined) {
+  return typeof n === 'number' ? `${n > 0 ? '+' : ''}${amountFmt.format(n)}` : '—';
+}
+
+export function fmtWinRate(n: number | null | undefined) {
+  return typeof n === 'number' ? `${(n * 100).toFixed(0)}%` : '—';
+}
+
 export function signTone(n: unknown): string {
   if (typeof n !== 'number' || n === 0) return '';
   return n > 0 ? 'num--pos' : 'num--neg';

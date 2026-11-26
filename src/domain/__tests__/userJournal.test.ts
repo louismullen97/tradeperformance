@@ -37,6 +37,9 @@ const properties: SourceProperty[] = [
   P('rating', 'Rating(1-5)', 'number'),
   P('outcome', 'Outcome', 'text', { nativeType: 'formula' }),
   P('mgmt', 'Management', 'select'),
+  P('pos', 'Positive tags', 'multi_select'),
+  P('neg', 'Negative tags', 'multi_select'),
+  P('struct', 'Structure Tags', 'multi_select'),
 ];
 const dataset: SourceDataset = { id: 'ds', kind: 'notion', name: '2027 Trade Journal', recordCount: 3 };
 const schema = { datasetId: 'ds', properties, fingerprint: schemaFingerprint(properties) };
@@ -72,6 +75,10 @@ describe('journal with Result (%) and PnL (amount)', () => {
     expect(mapped('setup')).toBe('Setup Type');
     expect(mapped('timeframe')).toBe('Entry Timeframe');
     expect(mapped('management_style')).toBe('Management');
+    expect(mapped('positive_tags')).toBe('Positive tags');
+    expect(mapped('negative_tags')).toBe('Negative tags');
+    expect(mapped('tags')).toBe('Structure Tags');
+    expect(mapped('execution_rating')).toBe('Rating(1-5)');
     const ev = evaluateMapping(config, properties, TRADE_FIELDS);
     expect(ev.fields.profit_loss_percentage.status).toBe('auto_matched');
     expect(ev.canProceed).toBe(true);
