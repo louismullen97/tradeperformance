@@ -1,0 +1,192 @@
+import type { FieldDefinition } from './types';
+
+/**
+ * Standardised trading fields. This registry is the single place to introduce
+ * new fields: the matcher, mapping evaluation, validation and preview are all
+ * driven from these definitions.
+ */
+export const TRADE_FIELDS: readonly FieldDefinition[] = [
+  // ── Mandatory core ───────────────────────────────────────────────
+  {
+    key: 'trade_date',
+    label: 'Trade date',
+    description: 'Date the trade was opened.',
+    required: true,
+    valueKind: 'date',
+    group: 'core',
+    aliases: ['Date', 'Trade Date', 'Entry Date', 'Open Date', 'Date Opened', 'Opened'],
+    example: '2026-03-12',
+  },
+  {
+    key: 'currency_pair',
+    label: 'Currency pair',
+    description: 'Instrument traded, e.g. EURUSD.',
+    required: true,
+    valueKind: 'string',
+    group: 'core',
+    aliases: ['Pair', 'Currency Pair', 'Instrument', 'Symbol', 'Ticker', 'Market', 'Asset'],
+    example: 'EURUSD',
+  },
+  {
+    key: 'setup',
+    label: 'Setup',
+    description: 'Strategy or setup that triggered the trade.',
+    required: true,
+    valueKind: 'string',
+    group: 'core',
+    aliases: ['Setup', 'Strategy', 'Trade Setup', 'Model', 'Playbook', 'Pattern'],
+    example: 'London breakout',
+  },
+  {
+    key: 'risk_percentage',
+    label: 'Risk %',
+    description: 'Account risk taken on the trade, as a percentage.',
+    required: true,
+    valueKind: 'number',
+    group: 'core',
+    unit: 'percent',
+    aliases: ['Risk %', 'Risk Percentage', 'Risk', 'Risk Pct', '% Risk', 'Risked'],
+    plausibleRange: { min: 0, max: 10, exclusiveMin: true },
+    example: '1.0',
+  },
+  {
+    key: 'result_r',
+    label: 'Result (R)',
+    description: 'Outcome expressed in R multiples.',
+    required: true,
+    valueKind: 'number',
+    group: 'core',
+    unit: 'r_multiple',
+    aliases: ['Result R', 'R Multiple', 'R:R Result', 'R Result', 'R', 'RR', 'Realised R', 'Realized R'],
+    plausibleRange: { min: -20, max: 50 },
+    example: '2.4',
+  },
+  {
+    key: 'profit_loss_percentage',
+    label: 'P/L %',
+    description: 'Account return on the trade, as a percentage.',
+    required: true,
+    valueKind: 'number',
+    group: 'core',
+    unit: 'percent',
+    aliases: ['Result %', 'P/L %', 'Return %', 'PnL %', 'Profit %', 'Return', 'Gain %', 'P&L %'],
+    plausibleRange: { min: -50, max: 200 },
+    example: '2.4',
+  },
+
+  // ── Optional ─────────────────────────────────────────────────────
+  {
+    key: 'direction',
+    label: 'Direction',
+    description: 'Long or short.',
+    required: false,
+    valueKind: 'string',
+    group: 'execution',
+    aliases: ['Direction', 'Side', 'Long/Short', 'Position', 'Bias', 'Buy/Sell'],
+    vocabulary: { long: ['long', 'buy', 'l', 'bull', 'bullish'], short: ['short', 'sell', 's', 'bear', 'bearish'] },
+    example: 'long',
+  },
+  {
+    key: 'timeframe',
+    label: 'Timeframe',
+    description: 'Chart timeframe used for the entry.',
+    required: false,
+    valueKind: 'string',
+    group: 'context',
+    aliases: ['Timeframe', 'TF', 'Time Frame', 'Entry TF', 'Chart'],
+    example: 'M15',
+  },
+  {
+    key: 'entry_type',
+    label: 'Entry type',
+    description: 'Order type or entry trigger.',
+    required: false,
+    valueKind: 'string',
+    group: 'execution',
+    aliases: ['Entry Type', 'Entry', 'Order Type', 'Entry Model', 'Trigger'],
+    example: 'Limit',
+  },
+  {
+    key: 'entry_price',
+    label: 'Entry price',
+    description: 'Fill price at entry.',
+    required: false,
+    valueKind: 'number',
+    group: 'execution',
+    unit: 'price',
+    aliases: ['Entry Price', 'Entry', 'Open Price', 'Price In', 'Fill'],
+    plausibleRange: { min: 0, exclusiveMin: true },
+    example: '1.08425',
+  },
+  {
+    key: 'exit_price',
+    label: 'Exit price',
+    description: 'Fill price at exit.',
+    required: false,
+    valueKind: 'number',
+    group: 'execution',
+    unit: 'price',
+    aliases: ['Exit Price', 'Exit', 'Close Price', 'Price Out'],
+    plausibleRange: { min: 0, exclusiveMin: true },
+    example: '1.08910',
+  },
+  {
+    key: 'trading_session',
+    label: 'Session',
+    description: 'Market session the trade was taken in.',
+    required: false,
+    valueKind: 'string',
+    group: 'context',
+    aliases: ['Session', 'Trading Session', 'Market Session', 'Killzone', 'Kill Zone'],
+    example: 'London',
+  },
+  {
+    key: 'trade_notes',
+    label: 'Notes',
+    description: 'Free-text notes or review.',
+    required: false,
+    valueKind: 'string',
+    group: 'meta',
+    aliases: ['Notes', 'Trade Notes', 'Comments', 'Review', 'Journal', 'Lessons', 'Thoughts'],
+    example: 'Waited for the retest.',
+  },
+  {
+    key: 'account',
+    label: 'Account',
+    description: 'Trading account or prop firm account.',
+    required: false,
+    valueKind: 'string',
+    group: 'meta',
+    aliases: ['Account', 'Broker', 'Account Name', 'Prop Firm', 'Funded Account'],
+    example: 'FTMO 100k',
+  },
+  {
+    key: 'screenshots',
+    label: 'Screenshots',
+    description: 'Chart screenshots or attachments.',
+    required: false,
+    valueKind: 'file_list',
+    group: 'meta',
+    aliases: ['Screenshots', 'Screenshot', 'Chart', 'Images', 'Attachments', 'Chart Link', 'TradingView'],
+    example: '2 files',
+  },
+  {
+    key: 'date_closed',
+    label: 'Date closed',
+    description: 'Date the trade was closed.',
+    required: false,
+    valueKind: 'date',
+    group: 'execution',
+    aliases: ['Date Closed', 'Close Date', 'Exit Date', 'Closed', 'Closed On'],
+    example: '2026-03-13',
+  },
+];
+
+export const MANDATORY_FIELDS = TRADE_FIELDS.filter((f) => f.required);
+export const OPTIONAL_FIELDS = TRADE_FIELDS.filter((f) => !f.required);
+
+export function getField(key: string, fields: readonly FieldDefinition[] = TRADE_FIELDS): FieldDefinition {
+  const field = fields.find((f) => f.key === key);
+  if (!field) throw new Error(`Unknown trade field: ${key}`);
+  return field;
+}
