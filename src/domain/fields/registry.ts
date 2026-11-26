@@ -99,6 +99,16 @@ export const TRADE_FIELDS: readonly FieldDefinition[] = [
     example: 'long',
   },
   {
+    key: 'management_style',
+    label: 'Management style',
+    description: 'How the trade was held or managed, e.g. Intraday, LTF Swing, HTF Swing. Separate from the setup.',
+    required: false,
+    valueKind: 'string',
+    group: 'execution',
+    aliases: ['Management', 'Management Style', 'Trade Management', 'Hold Style', 'Holding Style', 'Holding Period', 'Trade Style'],
+    example: 'HTF Swing',
+  },
+  {
     key: 'timeframe',
     label: 'Timeframe',
     description: 'Chart timeframe used for the entry.',

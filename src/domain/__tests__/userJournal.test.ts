@@ -36,6 +36,7 @@ const properties: SourceProperty[] = [
   P('sl', 'Stop Loss', 'number'),
   P('rating', 'Rating(1-5)', 'number'),
   P('outcome', 'Outcome', 'text', { nativeType: 'formula' }),
+  P('mgmt', 'Management', 'select'),
 ];
 const dataset: SourceDataset = { id: 'ds', kind: 'notion', name: '2027 Trade Journal', recordCount: 3 };
 const schema = { datasetId: 'ds', properties, fingerprint: schemaFingerprint(properties) };
@@ -53,6 +54,7 @@ const rec = (id: string, pair: string, result: number, pnl: number, r: number): 
     pnl: { kind: 'number', number: pnl },
     r: { kind: 'number', number: r },
     acct: { kind: 'multi_select', names: ['CTI 100k', 'Leveraged 100k'] },
+    mgmt: { kind: 'select', name: 'HTF Swing' },
   },
 });
 const records = [rec('a', 'EUR AUD', 0.0075, 750, 3), rec('b', 'EUR JPY', -0.0025, -250, -1), rec('c', 'GBP CAD', 0.0056, 560, 2.24)];
@@ -69,6 +71,7 @@ describe('journal with Result (%) and PnL (amount)', () => {
     expect(mapped('currency_pair')).toBe('Pairs');
     expect(mapped('setup')).toBe('Setup Type');
     expect(mapped('timeframe')).toBe('Entry Timeframe');
+    expect(mapped('management_style')).toBe('Management');
     const ev = evaluateMapping(config, properties, TRADE_FIELDS);
     expect(ev.fields.profit_loss_percentage.status).toBe('auto_matched');
     expect(ev.canProceed).toBe(true);
@@ -83,6 +86,7 @@ describe('journal with Result (%) and PnL (amount)', () => {
       profit_loss_percentage: 0.75,
       profit_loss_amount: 750,
       result_r: 3,
+      management_style: 'HTF Swing',
     });
   });
 

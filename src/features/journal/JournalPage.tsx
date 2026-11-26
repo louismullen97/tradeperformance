@@ -6,8 +6,8 @@ import type { StandardTrade, TradeFieldValue } from '../../domain/trades/types';
 import { Badge, fmtDate, fmtPct, fmtR, fmtRisk, Icon, signTone, Stat } from '../../ui/primitives';
 
 type SortKey = 'trade_date' | 'result_r' | 'profit_loss_percentage' | 'risk_percentage';
-type Filters = { pair: string; setup: string; account: string; outcome: '' | Outcome; dataset: string };
-const NO_FILTERS: Filters = { pair: '', setup: '', account: '', outcome: '', dataset: '' };
+type Filters = { pair: string; setup: string; management: string; account: string; outcome: '' | Outcome; dataset: string };
+const NO_FILTERS: Filters = { pair: '', setup: '', management: '', account: '', outcome: '', dataset: '' };
 
 const OUTCOME_LABEL: Record<Outcome, string> = { win: 'Win', loss: 'Loss', breakeven: 'BE' };
 const OUTCOME_TONE = { win: 'positive', loss: 'negative', breakeven: 'neutral' } as const;
@@ -51,6 +51,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
     return {
       pairs: uniq(all.map((t) => t.currency_pair)),
       setups: uniq(all.map((t) => t.setup)),
+      managements: uniq(all.map((t) => optionalText(t, 'management_style'))),
       accounts: uniq(all.map((t) => optionalText(t, 'account'))),
       datasets: [...new Map(all.map((t) => [t.source.datasetId, t.source])).values()],
     };
@@ -63,6 +64,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
         (t) =>
           (!f.pair || t.currency_pair === f.pair) &&
           (!f.setup || t.setup === f.setup) &&
+          (!f.management || optionalText(t, 'management_style') === f.management) &&
           (!f.account || optionalText(t, 'account') === f.account) &&
           (!f.outcome || outcomeOf(t) === f.outcome) &&
           (!f.dataset || t.source.datasetId === f.dataset),
@@ -114,8 +116,9 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
     );
   }
 
-  const optionalKeys = TRADE_FIELDS.filter((f) => !f.required && !['trade_notes', 'profit_loss_amount'].includes(f.key));
+  const optionalKeys = TRADE_FIELDS.filter((f) => !f.required && !['trade_notes', 'profit_loss_amount', 'management_style'].includes(f.key));
   const hasAmount = trades.some((t) => amountOf(t) !== null);
+  const hasManagement = options.managements.length > 0;
 
   return (
     <div className="journal">
@@ -156,6 +159,14 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
           <div className="filters">
             <FilterSelect label="Pair" value={filters.pair} options={options.pairs} onChange={(pair) => setFilters({ ...filters, pair })} />
             <FilterSelect label="Setup" value={filters.setup} options={options.setups} onChange={(setup) => setFilters({ ...filters, setup })} />
+            {options.managements.length > 0 && (
+              <FilterSelect
+                label="Management"
+                value={filters.management}
+                options={options.managements}
+                onChange={(management) => setFilters({ ...filters, management })}
+              />
+            )}
             {options.accounts.length > 0 && (
               <FilterSelect label="Account" value={filters.account} options={options.accounts} onChange={(account) => setFilters({ ...filters, account })} />
             )}
@@ -202,6 +213,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
                 <th>Pair</th>
                 <th>Side</th>
                 <th>Setup</th>
+                {hasManagement && <th>Management</th>}
                 <th>Session</th>
                 {header('risk_percentage', 'Risk')}
                 {header('result_r', 'Result')}
@@ -224,6 +236,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
                       <td className="strong">{t.currency_pair}</td>
                       <td>{direction ? <span className={`side side--${direction}`}>{direction === 'long' ? 'Long' : direction === 'short' ? 'Short' : direction}</span> : <span className="muted">—</span>}</td>
                       <td>{t.setup}</td>
+                      {hasManagement && <td>{optionalText(t, 'management_style') ?? <span className="muted">—</span>}</td>}
                       <td>{optionalText(t, 'trading_session') ?? <span className="muted">—</span>}</td>
                       <td className="num">{fmtRisk(t.risk_percentage)}</td>
                       <td className={`num ${signTone(t.result_r)}`}>{fmtR(t.result_r)}</td>
@@ -248,7 +261,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
                     </tr>
                     {open && (
                       <tr className="detail-row">
-                        <td colSpan={hasAmount ? 11 : 10}>
+                        <td colSpan={10 + Number(hasAmount) + Number(hasManagement)}>
                           <div className="trade-detail">
                             <div>
                               <div className="eyebrow">Notes</div>
