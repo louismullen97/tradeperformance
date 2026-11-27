@@ -9,6 +9,7 @@ import { summarise } from '../../domain/trades/summary';
 import type { StandardTrade } from '../../domain/trades/types';
 import { periodRange } from '../../domain/analytics/review';
 import { syncDailyReview } from '../../sources/http/reviewPublisher';
+import { centreTarget } from '../../domain/centre/settings';
 import { fmtR, fmtWinRate, Icon, signTone, Spinner, Stat } from '../../ui/primitives';
 import type { ReviewPublishing } from './ReviewPage';
 
@@ -132,8 +133,9 @@ export function DailyReviewPage({
   const [entry, setEntry] = useState<DailyReview>(() => emptyDaily(date));
   const [dirty, setDirty] = useState(false);
   const [sync, setSync] = useState<SyncState>({ kind: 'idle' });
-  const [toNotion, setToNotion] = useState(() => read(SYNC_KEY) === '1');
-  const [target, setTarget] = useState(() => read(TARGET_KEY) ?? '');
+  // Default to syncing when the Trading Centre has a Daily ASR database, unless the user turned it off.
+  const [toNotion, setToNotion] = useState(() => (read(SYNC_KEY) ?? (centreTarget('daily') ? '1' : '0')) === '1');
+  const [target, setTarget] = useState(() => read(TARGET_KEY) ?? centreTarget('daily') ?? '');
   const [datasets, setDatasets] = useState<SourceDataset[] | null>(null);
 
   useEffect(() => void tradeRepo.list().then(setTrades), [tradeRepo]);

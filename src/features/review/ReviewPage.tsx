@@ -6,6 +6,8 @@ import { periodRange, shiftPeriod, PERIOD_NOUN, type ReviewPeriod } from '../../
 import type { FlowEntry, FlowRepository } from '../../domain/flow/flow';
 import { buildAsr, PLAN_LABEL } from '../../domain/review/asr';
 import { dayRows, discipline, opportunityGaps, patterns, repeatableTags, subPanels, tradeQuality } from '../../domain/review/centre';
+import { centreTarget } from '../../domain/centre/settings';
+import { syncPlanItem } from '../../sources/http/reviewPublisher';
 import { planKey, type DailyRepository, type DailyReview, type PlanItem, type PlanRepository } from '../../domain/review/daily';
 import type { DataSourceConnector } from '../../domain/source/types';
 import type { TradeRepository } from '../../domain/trades/repository';
@@ -162,6 +164,7 @@ function PeriodReview({
 }) {
   const [reviews, setReviews] = useState<DailyReview[]>([]);
   const [planVersion, setPlanVersion] = useState(0);
+  const [planSync, setPlanSync] = useState<string | null>(null);
   useEffect(() => void dailyRepo.list().then(setReviews), [dailyRepo]);
   const [all, setAll] = useState<StandardTrade[] | null>(null);
   const [anchor, setAnchor] = useState<string | null>(null);
@@ -219,8 +222,39 @@ function PeriodReview({
   const planItems = plans.get(key);
   const nextItems = plans.get(nextKey);
   const setPlan = (k: string) => (items: PlanItem[]) => {
+    const before = plans.get(k);
     plans.set(k, items);
     setPlanVersion((v) => v + 1);
+    void pushPlans(k, before, items);
+  };
+
+  /** Mirror plan edits to the Trading Centre's Plans database. Failures leave the local copy intact. */
+  const pushPlans = async (k: string, before: PlanItem[], after: PlanItem[]) => {
+    const dataSourceId = centreTarget('plans');
+    if (!publishing.live || !dataSourceId) return;
+    const start = k.slice(k.indexOf(':') + 1);
+    const { end } = periodRange(period, start);
+    const changed = after.filter((i) => {
+      const old = before.find((b) => b.id === i.id);
+      return !old || old.text !== i.text || old.status !== i.status || !i.notion;
+    });
+    const removed = before.filter((b) => b.notion && !after.some((a) => a.id === b.id));
+    try {
+      let next = after;
+      for (const item of changed) {
+        const page = await syncPlanItem(publishing.apiBase, { dataSourceId, item, period, start, end });
+        if (page.id && !item.notion) next = next.map((x) => (x.id === item.id ? { ...x, notion: { pageId: page.id, url: page.url } } : x));
+      }
+      for (const item of removed) await syncPlanItem(publishing.apiBase, { dataSourceId, item, period, start, end, archive: true });
+      if (next !== after) {
+        // Keep any edits made while the sync was in flight; only attach the new page ids.
+        plans.set(k, plans.get(k).map((x) => next.find((n) => n.id === x.id && n.notion && !x.notion) ?? x));
+        setPlanVersion((v) => v + 1);
+      }
+      setPlanSync(null);
+    } catch (e) {
+      setPlanSync(e instanceof Error ? e.message : 'Could not sync to Notion.');
+    }
   };
   const hasPrev = prevTaken.length > 0;
   const sorted = [...taken].sort((a, b) => b.result_r - a.result_r);
@@ -385,18 +419,19 @@ function PeriodReview({
               </div>
             )}
           </section>
-
-          <PlanPanel
-            title={`${PLAN_LABEL[period]} this ${noun}`}
-            hint={PLAN_HINT[period]}
-            items={planItems}
-            onChange={setPlan(key)}
-            nextTitle={`${PLAN_LABEL[period]} for next ${noun}`}
-            nextItems={nextItems}
-            onNextChange={setPlan(nextKey)}
-          />
         </>
       )}
+
+      <PlanPanel
+        title={`${PLAN_LABEL[period]} this ${noun}`}
+        hint={PLAN_HINT[period]}
+        items={planItems}
+        onChange={setPlan(key)}
+        nextTitle={`${PLAN_LABEL[period]} for next ${noun}`}
+        nextItems={nextItems}
+        onNextChange={setPlan(nextKey)}
+        syncNote={planSync ? <span className="num-loss">Notion sync failed: {planSync}</span> : centreTarget('plans') && publishing.live ? 'Synced to Plans in your Trading Centre.' : undefined}
+      />
     </div>
   );
 }

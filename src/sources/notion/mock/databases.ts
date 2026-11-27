@@ -297,4 +297,97 @@ function flowLog(): MockNotionDatabase {
   return { dataSource, pages };
 }
 
-export const MOCK_DATABASES: MockNotionDatabase[] = [tradingJournal(), fxTradeLog(), propChallenge(), flowLog()];
+// ─────────────────────────────────────────────────────────────────────────
+// 5–8. The rest of the Trading Centre: Daily ASR, Plans, Playbook, Reviews.
+// ─────────────────────────────────────────────────────────────────────────
+function centreDb(slug: string, name: string, emoji: string, properties: NotionDataSource['properties'], rows: ((id: string, i: number) => NotionPage)[]): MockNotionDatabase {
+  const id = notionId(slug);
+  return {
+    dataSource: {
+      object: 'data_source',
+      id,
+      parent: { type: 'database_id', database_id: notionId(`${slug}-db`) },
+      in_trash: false,
+      title: rt(name),
+      icon: { type: 'emoji', emoji },
+      last_edited_time: '2026-03-20T18:00:00.000Z',
+      properties,
+    },
+    pages: rows.map((r, i) => r(id, i)),
+  };
+}
+
+function dailyAsr(): MockNotionDatabase {
+  const P = { name: 'title', date: 'Da%3A1', perf: 'Da%3A2', flow: 'Da%3A3', wins: 'Da%3A4', mistakes: 'Da%3A5', emotions: 'Da%3A6', lesson: 'Da%3A7' };
+  const wins = ['Followed my plan', 'Avoided a poor trade', 'Respected risk'];
+  const mistakes = ['Overtraded', 'FOMO entry', 'Moved my stop'];
+  const rows: ((id: string, i: number) => NotionPage)[] = [];
+  for (let d = new Date(Date.UTC(2026, 1, 2)); d <= new Date(Date.UTC(2026, 2, 19)); d.setUTCDate(d.getUTCDate() + 1)) {
+    if ([0, 6].includes(d.getUTCDay())) continue;
+    const date = d.toISOString().slice(0, 10);
+    const n = rows.length;
+    const perf = 4 + ((n * 5 + d.getUTCDate()) % 6);
+    rows.push((id, i) =>
+      page(id, 'daily-asr', i, date, {
+        Name: V.title(P.name, date),
+        Date: V.date(P.date, date),
+        Performance: V.number(P.perf, perf),
+        Flow: V.number(P.flow, Math.max(3, perf - 1)),
+        Wins: V.multi(P.wins, perf >= 6 ? [wins[n % 3]] : []),
+        Mistakes: V.multi(P.mistakes, perf <= 5 ? [mistakes[n % 3]] : []),
+        Emotions: V.multi(P.emotions, [perf >= 6 ? 'Calm' : 'Frustrated']),
+        Lesson: V.text(P.lesson, null),
+      }, `${date}T19:00:00.000Z`),
+    );
+  }
+  return centreDb('daily-asr', 'Daily ASR', '🗓️', {
+    Name: S.title(P.name, 'Name'),
+    Date: S.date(P.date, 'Date'),
+    Performance: S.number(P.perf, 'Performance'),
+    Flow: S.number(P.flow, 'Flow'),
+    Wins: S.multi(P.wins, 'Wins', wins),
+    Mistakes: S.multi(P.mistakes, 'Mistakes', mistakes),
+    Emotions: S.multi(P.emotions, 'Emotions', ['Calm', 'Frustrated']),
+    Lesson: S.text(P.lesson, 'Lesson'),
+  }, rows);
+}
+
+function plansDb(): MockNotionDatabase {
+  const P = { name: 'title', type: 'Pl%3A1', period: 'Pl%3A2', status: 'Pl%3A3' };
+  const items: [string, string, string, string][] = [
+    ['Max 2 trades per day', 'Commitment', '2026-03-16', 'Kept'],
+    ['No trades in the first 15 minutes of London', 'Commitment', '2026-03-16', 'Missed'],
+    ['Only A+ setups on Fridays', 'Focus area', '2026-03-01', 'Open'],
+    ['Pass the prop challenge', 'Objective', '2026-01-01', 'Open'],
+  ];
+  return centreDb('plans', 'Plans', '🎯', {
+    Name: S.title(P.name, 'Name'),
+    Type: S.select(P.type, 'Type', ['Commitment', 'Focus area', 'Objective']),
+    Period: S.date(P.period, 'Period'),
+    Status: S.select(P.status, 'Status', ['Open', 'Kept', 'Missed']),
+  }, items.map(([text, type, date, status]) => (id, i) => page(id, 'plans', i, text, { Name: V.title(P.name, text), Type: V.select(P.type, type), Period: V.date(P.period, date), Status: V.select(P.status, status) }, '2026-03-18T18:00:00.000Z')));
+}
+
+function playbookDb(): MockNotionDatabase {
+  const P = { setup: 'title', strategy: 'Pb%3A1', status: 'Pb%3A2' };
+  const setups: [string, string][] = [['London Breakout', 'Falcon'], ['Trend Pullback', 'Falcon'], ['Range Fade', 'Falcon'], ['Liquidity Sweep', 'ICT']];
+  return centreDb('playbook', 'Playbook', '📘', {
+    Setup: S.title(P.setup, 'Setup'),
+    Strategy: S.select(P.strategy, 'Strategy', ['Falcon', 'ICT']),
+    Status: S.select(P.status, 'Status', ['Active', 'Testing', 'Retired']),
+  }, setups.map(([setup, strategy]) => (id, i) => page(id, 'playbook', i, setup, { Setup: V.title(P.setup, setup), Strategy: V.select(P.strategy, strategy), Status: V.select(P.status, 'Active') }, '2026-03-01T18:00:00.000Z')));
+}
+
+function reviewsDb(): MockNotionDatabase {
+  const P = { name: 'title', period: 'Rv%3A1', date: 'Rv%3A2', netR: 'Rv%3A3', win: 'Rv%3A4', trades: 'Rv%3A5' };
+  return centreDb('reviews', 'Reviews', '🧭', {
+    Name: S.title(P.name, 'Name'),
+    Period: S.select(P.period, 'Period', ['Weekly', 'Monthly', 'Quarterly']),
+    Date: S.date(P.date, 'Date'),
+    'Net R': S.number(P.netR, 'Net R'),
+    'Win rate': S.number(P.win, 'Win rate', 'percent'),
+    Trades: S.number(P.trades, 'Trades'),
+  }, []);
+}
+
+export const MOCK_DATABASES: MockNotionDatabase[] = [tradingJournal(), fxTradeLog(), propChallenge(), flowLog(), dailyAsr(), plansDb(), playbookDb(), reviewsDb()];

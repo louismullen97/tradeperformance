@@ -34,3 +34,18 @@ export async function syncDailyReview(baseUrl: string, body: import('../../domai
   }
   return json as PublishedReview & { created: boolean };
 }
+
+/** Creates, updates or archives one plan item's page in a Notion Plans database. */
+export async function syncPlanItem(baseUrl: string, body: import('../../domain/review/daily').SyncPlanRequest): Promise<PublishedReview> {
+  const res = await fetch(`${baseUrl}/plans`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = (json as { error?: { message?: string } } | null)?.error?.message;
+    throw new Error(message ?? `Couldn't sync to Notion (HTTP ${res.status}).`);
+  }
+  return json as PublishedReview;
+}

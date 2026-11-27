@@ -160,11 +160,42 @@ export interface PlanItem {
   id: string;
   text: string;
   status: PlanStatus;
+  /** The item's page in a Notion Plans database, once synced or imported. */
+  notion?: { pageId: string; url?: string };
 }
 export interface PlanRepository {
   get(key: string): PlanItem[];
   set(key: string, items: PlanItem[]): void;
+  /** Merge items imported from Notion, matching by page id. */
+  mergeImported(items: { key: string; item: PlanItem }[]): number;
 }
+
+/** Plan kinds as named in a Notion Plans database, and the review period each belongs to. */
+export const PLAN_KIND = { week: 'Commitment', month: 'Focus area', quarter: 'Objective' } as const;
+export type PlanPeriod = keyof typeof PLAN_KIND;
+export function periodOfKind(kind: string | null | undefined): PlanPeriod {
+  const k = (kind ?? '').toLowerCase();
+  if (k.includes('objective') || k.includes('quarter') || k.includes('strategic')) return 'quarter';
+  if (k.includes('focus') || k.includes('month')) return 'month';
+  return 'week';
+}
+
+export const PLAN_FIELDS: readonly FieldDefinition[] = [
+  { key: 'text', label: 'Plan item', description: 'The commitment, focus area or objective.', required: true, valueKind: 'string', group: 'core', aliases: ['Name', 'Commitment', 'Objective', 'Goal', 'Item', 'Plan'], example: 'Max 2 trades per day' },
+  { key: 'period_start', label: 'Period', description: 'Any date inside the week, month or quarter it is for.', required: true, valueKind: 'date', group: 'core', aliases: ['Period', 'Date', 'Week', 'Month', 'Quarter', 'For'], example: '2026-11-23' },
+  { key: 'kind', label: 'Type', description: 'Commitment (week), Focus area (month) or Objective (quarter).', required: false, valueKind: 'string', group: 'context', aliases: ['Type', 'Kind', 'Category', 'Level'], example: 'Commitment' },
+  {
+    key: 'status',
+    label: 'Status',
+    description: 'Open, Kept or Missed.',
+    required: false,
+    valueKind: 'string',
+    group: 'context',
+    aliases: ['Status', 'Result', 'Outcome', 'Done'],
+    vocabulary: { open: ['open', 'not started', 'in progress', 'todo', 'to do'], kept: ['kept', 'done', 'achieved', 'complete', 'completed', 'yes'], missed: ['missed', 'failed', 'not done', 'no', 'broken'] },
+    example: 'Kept',
+  },
+];
 
 const PLAN_KEY = 'tradelens.plans.v1';
 
@@ -182,11 +213,22 @@ export class LocalStoragePlanRepository implements PlanRepository {
   }
   set(key: string, items: PlanItem[]) {
     this.plans[key] = items;
+    this.persist();
+  }
+  private persist() {
     try {
       this.storage?.setItem(PLAN_KEY, JSON.stringify(this.plans));
     } catch {
       /* storage unavailable */
     }
+  }
+  mergeImported(items: { key: string; item: PlanItem }[]) {
+    const ids = new Set(items.map((i) => i.item.notion?.pageId));
+    // Drop the old copy of any imported page (it may have moved period), then add.
+    for (const k of Object.keys(this.plans)) this.plans[k] = this.plans[k].filter((i) => !i.notion || !ids.has(i.notion.pageId));
+    for (const { key, item } of items) this.plans[key] = [...(this.plans[key] ?? []), item];
+    this.persist();
+    return items.length;
   }
 }
 
@@ -196,4 +238,15 @@ export const planKey = (period: string, start: string) => `${period}:${start}`;
 export interface SyncDailyRequest {
   dataSourceId: string;
   entry: DailyReview;
+}
+
+/** Body of POST /api/notion/plans: create, update or archive one plan item's page. */
+export interface SyncPlanRequest {
+  dataSourceId: string;
+  item: PlanItem;
+  period: PlanPeriod;
+  start: string;
+  end: string;
+  /** Move the item's page to the trash (it was deleted in Tradelens). */
+  archive?: boolean;
 }

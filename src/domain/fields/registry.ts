@@ -214,6 +214,16 @@ export const TRADE_FIELDS: readonly FieldDefinition[] = [
     example: '4',
   },
   {
+    key: 'strategy',
+    label: 'Strategy',
+    description: 'The trading strategy or system the trade belongs to (e.g. Falcon, ICT). Filled from your Playbook when blank.',
+    required: false,
+    valueKind: 'string',
+    group: 'context',
+    aliases: ['Strategy', 'System', 'Trading Strategy', 'Methodology', 'Model', 'Playbook'],
+    example: 'Falcon',
+  },
+  {
     key: 'trade_status',
     label: 'Trade status',
     description: 'Whether the trade was taken or missed. Blank means taken.',

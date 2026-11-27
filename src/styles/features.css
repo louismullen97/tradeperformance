@@ -2252,3 +2252,89 @@ button.highlight:hover {
     margin-left: 0;
   }
 }
+
+/* ── Trading Centre ───────────────────────────────────────────────────── */
+.centre-card {
+  margin-bottom: var(--space-5);
+}
+.centre-card__title {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.centre-card__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: 18px;
+}
+.centre-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.centre-card__error {
+  margin: 0 var(--space-5) var(--space-4);
+}
+.centre-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 var(--space-2);
+}
+.centre-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 10px var(--space-5);
+  box-shadow: inset 0 1px 0 var(--divider);
+}
+.centre-row.is-other {
+  opacity: 0.8;
+}
+.centre-row__icon {
+  font-size: 16px;
+  text-align: center;
+}
+.centre-row__main {
+  display: grid;
+  min-width: 0;
+}
+.centre-row__role {
+  font-size: var(--text-xs);
+  color: var(--accent-text);
+}
+.centre-row__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-align: right;
+}
+.centre-row__status .link {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+.text-warning {
+  color: var(--warning);
+}
+@media (max-width: 640px) {
+  .centre-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+  .centre-row__status {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+.centre-card > .panel__head {
+  flex-wrap: wrap;
+}
+.centre-card__title {
+  flex: 1 1 320px;
+}

@@ -30,6 +30,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const DIMENSIONS: Dimension[] = [
   { key: 'setup', label: 'Setup', values: (t) => [t.setup] },
+  { key: 'strategy', label: 'Strategy', values: (t) => text(t, 'strategy') },
   { key: 'management_style', label: 'Management', values: (t) => text(t, 'management_style') },
   { key: 'timeframe', label: 'Timeframe', values: (t) => text(t, 'timeframe') },
   { key: 'trading_session', label: 'Session', values: (t) => text(t, 'trading_session') },

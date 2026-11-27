@@ -86,7 +86,7 @@ export interface Segment {
 /** Strength of the pull toward the overall average (in trades). */
 export const SHRINK_TRADES = 5;
 
-const ROW_DIMS = ['setup', 'timeframe', 'trading_session', 'management_style', 'currency_pair', 'direction', 'entry_type', 'weekday'];
+const ROW_DIMS = ['setup', 'strategy', 'timeframe', 'trading_session', 'management_style', 'currency_pair', 'direction', 'entry_type', 'weekday'];
 
 export interface EdgeReport {
   overall: TradeSummary;
@@ -144,9 +144,11 @@ export function edgeAnalysis(trades: StandardTrade[], opts: { minSample?: number
     .slice(0, limit);
 
   const profile: EdgeReport['profile'] = [];
-  for (const key of ['setup', 'timeframe', 'trading_session', 'management_style', 'psychology_tags', 'execution_rating']) {
+  for (const key of ['strategy', 'setup', 'timeframe', 'trading_session', 'management_style', 'psychology_tags', 'execution_rating']) {
     const d = dims.find((x) => x.key === key);
     if (!d) continue;
+    // A single strategy says nothing about where the edge is.
+    if (key === 'strategy' && new Set(trades.flatMap(d.values)).size < 2) continue;
     const best = (singles.get(d.label) ?? []).filter((s) => (s.stats.avgR ?? 0) > 0).sort((a, b) => b.score - a.score)[0];
     if (best) profile.push({ dimension: d.label, segment: best });
   }

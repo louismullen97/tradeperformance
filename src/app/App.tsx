@@ -9,7 +9,7 @@ import { DimensionPerformance } from '../features/performance/DimensionPerforman
 import { PerformanceOverview } from '../features/performance/PerformanceOverview';
 import { PsychologyPage } from '../features/psychology/PsychologyPage';
 import { ReviewPage, type ReviewTab } from '../features/review/ReviewPage';
-import { LocalStoragePlanRepository, type DailyRepository } from '../domain/review/daily';
+import type { DailyRepository, PlanRepository } from '../domain/review/daily';
 import type { PerformanceSub } from '../features/performance/PerformanceTabs';
 import type { ConnectionStatus } from '../sources/http/httpConnector';
 import type { FlowRepository } from '../domain/flow/flow';
@@ -46,13 +46,13 @@ function routeFromHash(fallback: View): Route {
 const SUB_LABEL: Record<string, string> = { setup: 'Setup', timeframe: 'Timeframe', tags: 'Tags', edge: 'Edge', flow: 'Flow Zone', day: 'Daily', week: 'Weekly', month: 'Monthly', quarter: 'Quarterly' };
 
 const goals = new LocalStorageGoalRepository();
-const plans = new LocalStoragePlanRepository();
 
 export function App({
   services,
   trades,
   flow,
   daily,
+  plans,
   status,
   demo,
   hasTrades,
@@ -61,6 +61,7 @@ export function App({
   trades: TradeRepository;
   flow: FlowRepository;
   daily: DailyRepository;
+  plans: PlanRepository;
   status: ConnectionStatus;
   demo: boolean;
   hasTrades: boolean;

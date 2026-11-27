@@ -308,7 +308,9 @@ export function PlanPanel({
   nextTitle,
   nextItems,
   onNextChange,
+  syncNote,
 }: {
+  syncNote?: React.ReactNode;
   title: string;
   hint: string;
   items: PlanItem[];
@@ -322,7 +324,10 @@ export function PlanPanel({
       <header className="panel__head">
         <div>
           <h2 className="section-title">{title}</h2>
-          <p className="section-sub">{hint}</p>
+          <p className="section-sub">
+            {hint}
+            {syncNote && <> {syncNote}</>}
+          </p>
         </div>
         {items.length > 0 && (
           <span className="muted small">

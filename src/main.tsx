@@ -2,8 +2,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { LocalStorageFlowRepository } from './domain/flow/flow';
-import { createDailyTarget, createFlowTarget, createTradeTarget } from './domain/import/targets';
-import { LocalStorageDailyRepository } from './domain/review/daily';
+import { createDailyTarget, createFlowTarget, createPlanTarget, createPlaybookTarget, createTradeTarget } from './domain/import/targets';
+import { LocalStoragePlaybookRepository, withPlaybook } from './domain/centre/playbook';
+import { LocalStorageDailyRepository, LocalStoragePlanRepository } from './domain/review/daily';
 import { LocalStorageTradeRepository } from './domain/trades/repository';
 import { LocalStorageMappingRepository } from './domain/mapping/repository';
 import type { DataSourceConnector } from './domain/source/types';
@@ -42,17 +43,19 @@ async function main() {
   const trades = new LocalStorageTradeRepository();
   const flow = new LocalStorageFlowRepository();
   const daily = new LocalStorageDailyRepository();
+  const plans = new LocalStoragePlanRepository();
+  const playbook = new LocalStoragePlaybookRepository();
   const services: ImportServices = {
     connector,
     mappings: new LocalStorageMappingRepository(),
-    targets: [createTradeTarget(trades), createDailyTarget(daily), createFlowTarget(flow)],
+    targets: [createTradeTarget(trades), createDailyTarget(daily), createFlowTarget(flow), createPlanTarget(plans), createPlaybookTarget(playbook)],
   };
 
   const hasTrades = (await trades.count()) > 0;
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App services={services} trades={trades} flow={flow} daily={daily} status={status} demo={demo} hasTrades={hasTrades} />
+      <App services={services} trades={withPlaybook(trades, playbook)} flow={flow} daily={daily} plans={plans} status={status} demo={demo} hasTrades={hasTrades} />
     </StrictMode>,
   );
 }

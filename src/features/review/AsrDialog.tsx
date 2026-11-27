@@ -3,6 +3,7 @@ import type { AsrDocument } from '../../domain/review/asr';
 import type { DataSourceConnector, SourceDataset } from '../../domain/source/types';
 import { blobToBase64, chartToPng, slugify } from '../../ui/charts/exportChart';
 import { publishReview } from '../../sources/http/reviewPublisher';
+import { centreTarget } from '../../domain/centre/settings';
 import { Icon, Spinner } from '../../ui/primitives';
 
 const TARGET_KEY = 'tradelens.asr.target.v1';
@@ -72,7 +73,8 @@ export function AsrDialog({
       .then((list) => {
         setDatasets(list);
         const saved = storedTarget();
-        const guess = list.find((d) => d.id === saved) ?? list.find((d) => /review|asr/i.test(d.name));
+        const fromCentre = centreTarget('reviews');
+        const guess = list.find((d) => d.id === saved) ?? list.find((d) => d.id === fromCentre) ?? list.find((d) => /review/i.test(d.name) && !/daily/i.test(d.name));
         setTarget(guess?.id ?? '');
       })
       .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : 'Could not load databases.'));

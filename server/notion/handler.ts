@@ -3,6 +3,7 @@ import { NotionApiConnector } from './apiConnector';
 import { createAsrPage, type CreateAsrRequest } from './asr';
 import { NotionApiError, NotionClient } from './client';
 import { upsertDailyPage, type SyncDailyRequest } from './daily';
+import { syncPlanPage, type SyncPlanRequest } from './plans';
 
 /**
  * `/api/notion/*` routes. Framework-agnostic (plain Node req/res) so it can be
@@ -14,6 +15,7 @@ import { upsertDailyPage, type SyncDailyRequest } from './daily';
  *   GET /data-sources/:id/records    → SourceRecord[]
  *   GET /data-sources/:id/count      → { count }
  *   POST /reviews                    → { id, url }  (creates an ASR page; needs Insert content)
+ *   POST /plans                      → { id, url }  (creates/updates/archives a Plans item)
  *   POST /daily                      → { id, url, created }  (creates/updates a Daily ASR page; needs Insert + Update content)
  */
 
@@ -95,6 +97,21 @@ function isAsrRequest(b: unknown): b is CreateAsrRequest {
   return !!r && typeof r.dataSourceId === 'string' && /^[0-9a-fA-F-]{32,36}$/.test(r.dataSourceId) && !!r.document && Array.isArray(r.document.blocks) && Array.isArray(r.images);
 }
 
+function isPlanRequest(b: unknown): b is SyncPlanRequest {
+  const r = b as SyncPlanRequest;
+  const pageId = r?.item?.notion?.pageId;
+  return (
+    !!r &&
+    typeof r.dataSourceId === 'string' &&
+    /^[0-9a-fA-F-]{32,36}$/.test(r.dataSourceId) &&
+    typeof r.item?.text === 'string' &&
+    ['week', 'month', 'quarter'].includes(r.period) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(r.start) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(r.end) &&
+    (pageId === undefined || /^[0-9a-fA-F-]{32,36}$/.test(pageId))
+  );
+}
+
 function isDailyRequest(b: unknown): b is SyncDailyRequest {
   const r = b as SyncDailyRequest;
   return !!r && typeof r.dataSourceId === 'string' && /^[0-9a-fA-F-]{32,36}$/.test(r.dataSourceId) && !!r.entry && /^\d{4}-\d{2}-\d{2}$/.test(r.entry.date) && Array.isArray(r.entry.wins);
@@ -102,7 +119,7 @@ function isDailyRequest(b: unknown): b is SyncDailyRequest {
 
 export async function handleNotionApi(req: IncomingMessage, res: ServerResponse, config: NotionApiConfig): Promise<void> {
   const path = new URL(req.url ?? '/', 'http://local').pathname.replace(/\/+$/, '') || '/';
-  const isWrite = req.method === 'POST' && (path === '/reviews' || path === '/daily');
+  const isWrite = req.method === 'POST' && (path === '/reviews' || path === '/daily' || path === '/plans');
   if (req.method !== 'GET' && !isWrite) return send(res, 405, { error: { code: 'method_not_allowed', message: 'Method not allowed' } });
 
   if (!config.token) {
@@ -114,6 +131,10 @@ export async function handleNotionApi(req: IncomingMessage, res: ServerResponse,
   try {
     if (isWrite) {
       const body = await readJson<unknown>(req);
+      if (path === '/plans') {
+        if (!isPlanRequest(body)) return send(res, 400, { error: { code: 'bad_request', message: 'Expected { dataSourceId, item, period, start, end }.' } });
+        return send(res, 200, await syncPlanPage(client, body));
+      }
       if (path === '/daily') {
         if (!isDailyRequest(body)) return send(res, 400, { error: { code: 'bad_request', message: 'Expected { dataSourceId, entry }.' } });
         return send(res, 200, await upsertDailyPage(client, body));

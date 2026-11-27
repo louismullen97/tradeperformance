@@ -31,7 +31,7 @@ const PRESETS: { key: RangePreset; label: string }[] = [
 ];
 
 /** Dimensions offered as filters, in the order traders think about them. */
-const FILTER_KEYS = ['setup', 'timeframe', 'management_style', 'trading_session', 'currency_pair', 'direction', 'entry_type', 'account'];
+const FILTER_KEYS = ['strategy', 'setup', 'timeframe', 'management_style', 'trading_session', 'currency_pair', 'direction', 'entry_type', 'account'];
 
 export function PerformanceOverview({ trades: repo }: { trades: TradeRepository }) {
   const [all, setAll] = useState<StandardTrade[] | null>(null);

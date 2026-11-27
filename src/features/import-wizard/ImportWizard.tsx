@@ -7,6 +7,7 @@ import { MapPropertiesStep } from './steps/MapPropertiesStep';
 import { SelectDatabaseStep } from './steps/SelectDatabaseStep';
 import { ValidateStep } from './steps/ValidateStep';
 import { useImportWizard, type ImportServices } from './useImportWizard';
+import { TradingCentreCard } from '../centre/TradingCentreCard';
 
 export function ImportWizard({ services }: { services: ImportServices }) {
   const wizard = useImportWizard(services);
@@ -28,6 +29,10 @@ export function ImportWizard({ services }: { services: ImportServices }) {
         <div className="callout callout--negative">
           <Icon name="alert" /> {wizard.error}
         </div>
+      )}
+
+      {wizard.step === 'select' && (
+        <TradingCentreCard services={services} onOpenWizard={() => document.querySelector('.target-picker')?.scrollIntoView({ behavior: 'smooth' })} />
       )}
 
       <div className="wizard__body">

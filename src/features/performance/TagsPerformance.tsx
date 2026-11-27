@@ -9,7 +9,7 @@ import type { StandardTrade } from '../../domain/trades/types';
 import { fmtR, fmtWinRate, Icon } from '../../ui/primitives';
 import { PerformanceTabs } from './PerformanceTabs';
 
-const ROW_KEYS = ['setup', 'timeframe', 'currency_pair', 'trading_session', 'management_style'];
+const ROW_KEYS = ['setup', 'strategy', 'timeframe', 'currency_pair', 'trading_session', 'management_style'];
 const PRESETS: { key: RangePreset; label: string }[] = [
   { key: 'all', label: 'All time' },
   { key: 'month', label: 'This month' },
