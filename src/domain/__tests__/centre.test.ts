@@ -73,3 +73,18 @@ describe('daily repository', () => {
     expect((await new LocalStorageDailyRepository(storage).list()).map((x) => x.date)).toEqual(['2026-11-16', '2026-11-17']);
   });
 });
+
+import { DAILY_FIELDS } from '../review/daily';
+import { createSuggestedConfig } from '../mapping/config';
+import type { SourceProperty } from '../source/types';
+import { schemaFingerprint } from '../source/types';
+
+describe('Daily ASR mapping', () => {
+  it('maps the Notion Daily ASR database automatically', () => {
+    const P = (id: string, name: string, type: SourceProperty['type']): SourceProperty => ({ id, name, type, nativeType: type });
+    const props = [P('n', 'Name', 'title'), P('d', 'Date', 'date'), P('p', 'Performance', 'number'), P('f', 'Flow', 'number'), P('w', 'Wins', 'multi_select'), P('m', 'Mistakes', 'multi_select'), P('e', 'Emotions', 'multi_select'), P('o', 'Observations', 'text'), P('c', 'Decisions', 'text'), P('l', 'Lesson', 'text')];
+    const cfg = createSuggestedConfig({ id: 'da', kind: 'notion', name: 'Daily ASR', recordCount: 0 }, { datasetId: 'da', properties: props, fingerprint: schemaFingerprint(props) }, DAILY_FIELDS, 'daily');
+    const name = (k: string) => props.find((p) => p.id === cfg.entries[k].propertyId)?.name;
+    expect(DAILY_FIELDS.map((f) => name(f.key))).toEqual(['Date', 'Performance', 'Flow', 'Wins', 'Mistakes', 'Emotions', 'Observations', 'Decisions', 'Lesson']);
+  });
+});
