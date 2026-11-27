@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { tagDifference, MIN_TAG_SAMPLE } from '../../domain/analytics/analytics';
+import { tagGroup } from '../../domain/tags/tags';
 import { psychologyBreakdown, psychologyTagsOf, ratingBreakdown, ratingByOutcome, type PsychologyRow } from '../../domain/analytics/psychology';
 import type { TradeRepository } from '../../domain/trades/repository';
 import { takenOnly } from '../../domain/trades/status';
 import type { StandardTrade } from '../../domain/trades/types';
 import { PsychologyTabs } from './PsychologyTabs';
+import { InsightsPanel } from './InsightsPanel';
+import type { FlowEntry, FlowRepository } from '../../domain/flow/flow';
 import { fmtR, fmtWinRate, Icon, signTone, Stat } from '../../ui/primitives';
 import { TagAnalysis } from '../performance/PerformanceOverview';
 
-const SOURCES = [{ key: 'psychology_tags', label: 'Psychology' }];
+const SOURCES = [tagGroup('psychology')];
 
 function CountBar({ value, max, kind }: { value: number; max: number; kind: 'gain' | 'loss' | 'missed' }) {
   return (
@@ -21,9 +24,11 @@ function CountBar({ value, max, kind }: { value: number; max: number; kind: 'gai
   );
 }
 
-export function PsychologyPage({ trades: repo }: { trades: TradeRepository }) {
+export function PsychologyPage({ trades: repo, flow: flowRepo }: { trades: TradeRepository; flow?: FlowRepository }) {
   const [all, setAll] = useState<StandardTrade[] | null>(null);
+  const [flow, setFlow] = useState<FlowEntry[]>([]);
   useEffect(() => void repo.list().then(setAll), [repo]);
+  useEffect(() => void flowRepo?.list().then(setFlow), [flowRepo]);
 
   const taken = useMemo(() => takenOnly(all ?? []), [all]);
   const rows = useMemo(() => psychologyBreakdown(all ?? []), [all]);
@@ -46,6 +51,8 @@ export function PsychologyPage({ trades: repo }: { trades: TradeRepository }) {
   return (
     <div className="page">
       <PsychologyTabs active="overview" description="How your state of mind relates to winners, losers and the trades you didn't take." />
+
+      <InsightsPanel trades={taken} flow={flow} />
 
       {rows.length === 0 ? (
         <div className="empty-state panel">

@@ -1,3 +1,6 @@
+import type { PlanRepository } from '../../domain/review/daily';
+import { activeFocusAreas } from '../../domain/review/focus';
+import { FocusAreas } from '../review/FocusAreas';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { dailyStats, performance } from '../../domain/analytics/analytics';
 import type { GoalRepository } from '../../domain/goals/goals';
@@ -25,7 +28,7 @@ function initialMonth(trades: StandardTrade[]): { year: number; month: number } 
   return { year: Number(target.slice(0, 4)), month: Number(target.slice(5, 7)) - 1 };
 }
 
-export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository; goals: GoalRepository }) {
+export function OverviewPage({ trades: repo, goals, plans }: { trades: TradeRepository; goals: GoalRepository; plans?: PlanRepository }) {
   const [trades, setTrades] = useState<StandardTrade[] | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const [ym, setYm] = useState<{ year: number; month: number } | null>(null);
@@ -134,6 +137,8 @@ export function OverviewPage({ trades: repo, goals }: { trades: TradeRepository;
       />
 
       <GoalsPanel trades={trades} repo={goals} today={todayIso()} />
+
+      {plans && activeFocusAreas(plans.entries()).length > 0 && <FocusAreas entries={activeFocusAreas(plans.entries())} trades={trades} today={todayIso()} compact />}
 
       <div className="overview-grid">
         <section className="panel">

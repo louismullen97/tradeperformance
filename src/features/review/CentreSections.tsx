@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Segment } from '../../domain/analytics/edge';
 import type { DayRow, Discipline, OpportunityGaps, Panel, RepeatableTag, TradeQuality } from '../../domain/review/centre';
-import type { PlanItem, PlanStatus } from '../../domain/review/daily';
+import type { FocusGoal, PlanItem, PlanStatus } from '../../domain/review/daily';
 import { LineChart } from '../../ui/charts/LineChart';
 import { fmtR, fmtWinRate, Icon, signTone, Stat } from '../../ui/primitives';
 
@@ -90,8 +90,8 @@ export function DisciplinePanel({ d, q }: { d: Discipline; q: TradeQuality }) {
         <Stat label="Daily ASRs logged" value={`${d.logged}/${d.days}`} foot={d.days - d.logged > 0 ? `${d.days - d.logged} day${d.days - d.logged === 1 ? '' : 's'} missing` : 'Every day logged'} />
         <Stat label="Mistake-free days" value={d.cleanRate === null ? '—' : fmtWinRate(d.cleanRate)} foot={`${d.winsCount} wins · ${d.mistakesCount} mistakes tagged`} />
         <Stat label="Avg performance" value={score(d.avgPerformance)} unit="/10" foot={`Green days ${score(d.performanceOnGreen)} · red ${score(d.performanceOnRed)}`} />
-        <Stat label="Good trades" value={fmtR(q.good.netR)} tone={q.good.netR > 0 ? 'positive' : q.good.netR < 0 ? 'negative' : undefined} foot={`${q.good.count} trades tagged positive only`} />
-        <Stat label="Trades with mistakes" value={fmtR(q.mistakes.netR)} tone={q.mistakes.netR < 0 ? 'negative' : q.mistakes.netR > 0 ? 'positive' : undefined} foot={`${q.mistakes.count} trades with a negative tag`} />
+        <Stat label="Good trades" value={fmtR(q.good.netR)} tone={q.good.netR > 0 ? 'positive' : q.good.netR < 0 ? 'negative' : undefined} foot={`${q.good.count} trade${q.good.count === 1 ? '' : 's'} with only good behaviour`} />
+        <Stat label="Trades with mistakes" value={fmtR(q.mistakes.netR)} tone={q.mistakes.netR < 0 ? 'negative' : q.mistakes.netR > 0 ? 'positive' : undefined} foot={`${q.mistakes.count} trade${q.mistakes.count === 1 ? '' : 's'} with a mistake tagged`} />
       </div>
     </section>
   );
@@ -219,16 +219,30 @@ export function RepeatableTagsPanel({ tags }: { tags: RepeatableTag[] }) {
   );
 }
 
-export function GapsPanel({ g }: { g: OpportunityGaps }) {
-  const items: { icon: 'alert' | 'info'; text: React.ReactNode }[] = [];
+export interface FocusCandidate {
+  source: string;
+  label: string;
+  goal: FocusGoal;
+}
+
+export function GapsPanel({ g, onFocus, focused }: { g: OpportunityGaps; onFocus?: (c: FocusCandidate) => void; focused?: Set<string> }) {
+  const items: { icon: 'alert' | 'info'; text: React.ReactNode; focus?: FocusCandidate }[] = [];
   if (g.missedWinners)
     items.push({ icon: 'info', text: <><strong className="num-gain">{fmtR(g.missedWinnersR)}</strong> left on the table from {g.missedWinners} missed winner{g.missedWinners === 1 ? '' : 's'}.</> });
   if (g.mistakeTrades)
     items.push({ icon: 'alert', text: <><strong className={signTone(g.mistakeTradesR)}>{fmtR(g.mistakeTradesR)}</strong> from {g.mistakeTrades} trade{g.mistakeTrades === 1 ? '' : 's'} tagged with a mistake.</> });
   if (g.costliestMistake)
-    items.push({ icon: 'alert', text: <>Costliest habit: <strong>{g.costliestMistake.tag}</strong> — {fmtR(g.costliestMistake.netR)} across {g.costliestMistake.count} {g.costliestMistake.kind.startsWith('Day') ? 'days' : 'trades'}.</> });
+    items.push({
+      icon: 'alert',
+      text: <>Costliest habit: <strong>{g.costliestMistake.tag}</strong> — {fmtR(g.costliestMistake.netR)} across {g.costliestMistake.count} {g.costliestMistake.kind.startsWith('Day') ? 'days' : 'trades'}.</>,
+      focus: g.costliestMistake.groupKey ? { source: `${g.costliestMistake.groupKey}=${g.costliestMistake.tag}`, label: g.costliestMistake.tag, goal: 'fewer' } : undefined,
+    });
   for (const l of g.leaks)
-    items.push({ icon: 'alert', text: <>Leak: <strong>{l.factors.map((f) => f.value).join(' + ')}</strong> — {fmtR(l.stats.avgR)} per trade over {l.stats.count} trades.</> });
+    items.push({
+      icon: 'alert',
+      text: <>Leak: <strong>{l.factors.map((f) => f.value).join(' + ')}</strong> — {fmtR(l.stats.avgR)} per trade over {l.stats.count} trades.</>,
+      focus: { source: l.key, label: l.factors.map((f) => f.value).join(' + '), goal: 'better_r' },
+    });
   if (g.unloggedDays) items.push({ icon: 'info', text: <>{g.unloggedDays} trading day{g.unloggedDays === 1 ? '' : 's'} without a Daily ASR — gaps in the data hide patterns.</> });
   return (
     <section className="panel">
@@ -246,6 +260,14 @@ export function GapsPanel({ g }: { g: OpportunityGaps }) {
             <li key={i}>
               <Icon name={it.icon} size={14} />
               <span>{it.text}</span>
+              {it.focus && onFocus &&
+                (focused?.has(it.focus.source) ? (
+                  <span className="status-pill status-pill--gain">Focus area</span>
+                ) : (
+                  <button className="btn btn--xs btn--ghost" onClick={() => onFocus(it.focus!)}>
+                    Make this a focus area
+                  </button>
+                ))}
             </li>
           ))}
         </ul>

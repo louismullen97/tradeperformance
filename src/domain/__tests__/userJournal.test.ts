@@ -82,7 +82,7 @@ describe('journal with Result (%) and PnL (amount)', () => {
     expect(mapped('management_style')).toBe('Management');
     expect(mapped('positive_tags')).toBe('Positive tags');
     expect(mapped('negative_tags')).toBe('Negative tags');
-    expect(mapped('tags')).toBe('Structure Tags');
+    expect(mapped('technical_tags')).toBe('Structure Tags');
     expect(mapped('execution_rating')).toBe('Rating(1-5)');
     expect(mapped('trade_status')).toBe('Trade Status');
     expect(mapped('missed_reason')).toBe('Missed Reason');

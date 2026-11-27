@@ -81,7 +81,11 @@ export function suggestMappings(
   const pairs: { field: FieldDefinition; candidate: Candidate }[] = [];
   for (const field of targetFields) {
     for (const candidate of rankCandidates(field, properties)) {
-      if (candidate.score >= SUGGEST_THRESHOLD) pairs.push({ field, candidate });
+      if (candidate.score < SUGGEST_THRESHOLD) continue;
+      // A multi-select column only feeds a single-value field on a strong name match;
+      // otherwise it is left free to become its own tag group.
+      if (candidate.property.type === 'multi_select' && field.valueKind !== 'string_list' && candidate.nameScore < 0.9) continue;
+      pairs.push({ field, candidate });
     }
   }
   pairs.sort(

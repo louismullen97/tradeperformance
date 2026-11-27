@@ -2,6 +2,7 @@ import { cumulativeR, outcomeOf, summarise, type TradeSummary } from '../trades/
 import type { StandardTrade } from '../trades/types';
 import { amountOf } from '../trades/summary';
 import { distinctValues, type Dimension } from './dimensions';
+import { tagGroups } from '../tags/tags';
 
 const round = (n: number, dp = 4) => Math.round(n * 10 ** dp) / 10 ** dp;
 const byDate = (a: StandardTrade, b: StandardTrade) => a.trade_date.localeCompare(b.trade_date) || a.id.localeCompare(b.id);
@@ -155,10 +156,8 @@ export function monthGrid(year: number, month: number): (string | null)[][] {
 
 // ── Tag difference analysis ──────────────────────────────────────────
 
-export interface TagSource {
-  key: string;
-  label: string;
-}
+/** A group of tags (behaviour, technical, psychology, custom columns, …). */
+export type TagSource = Dimension;
 
 export interface TagRow {
   tag: string;
@@ -180,20 +179,15 @@ export interface TagRow {
 
 export const MIN_TAG_SAMPLE = 5;
 
-const tagValues = (t: StandardTrade, key: string): string[] => {
-  const v = t.optional[key];
-  return Array.isArray(v) ? v : typeof v === 'string' && v ? v.split(/\s*,\s*/) : [];
-};
-
 export function tagDifference(trades: StandardTrade[], sources: TagSource[]): TagRow[] {
   const wins = trades.filter((t) => outcomeOf(t) === 'win');
   const losses = trades.filter((t) => outcomeOf(t) === 'loss');
   const rows: TagRow[] = [];
 
   for (const src of sources) {
-    const tags = new Set(trades.flatMap((t) => tagValues(t, src.key)));
+    const tags = new Set(trades.flatMap((t) => src.values(t)));
     for (const tag of tags) {
-      const has = (t: StandardTrade) => tagValues(t, src.key).includes(tag);
+      const has = (t: StandardTrade) => src.values(t).includes(tag);
       const withTag = trades.filter(has);
       const without = trades.filter((t) => !has(t));
       const sw = summarise(withTag);
@@ -218,14 +212,9 @@ export function tagDifference(trades: StandardTrade[], sources: TagSource[]): Ta
   return rows.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference) || b.trades - a.trades);
 }
 
-/** Tag sources present in the data, in a stable order. */
+/** Tag groups present in the data, in a stable order. */
 export function availableTagSources(trades: StandardTrade[]): TagSource[] {
-  const all: TagSource[] = [
-    { key: 'positive_tags', label: 'Positive' },
-    { key: 'negative_tags', label: 'Negative' },
-    { key: 'tags', label: 'Other' },
-  ];
-  return all.filter((s) => trades.some((t) => tagValues(t, s.key).length > 0));
+  return tagGroups(trades);
 }
 
 // ── Date presets ─────────────────────────────────────────────────────

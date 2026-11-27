@@ -5,6 +5,7 @@ import { DAILY_TAGS, emptyDaily, hasContent, type DailyRepository, type DailyRev
 import type { SourceDataset } from '../../domain/source/types';
 import type { TradeRepository } from '../../domain/trades/repository';
 import { isMissed } from '../../domain/trades/status';
+import { tagsOf } from '../../domain/tags/tags';
 import { summarise } from '../../domain/trades/summary';
 import type { StandardTrade } from '../../domain/trades/types';
 import { periodRange } from '../../domain/analytics/review';
@@ -354,7 +355,7 @@ export function DailyReviewPage({
                         {t.currency_pair} <span className="muted">· {t.setup}</span>
                       </span>
                       <span className="list__sub">
-                        {isMissed(t) ? 'Missed' : [t.optional.trading_session, ...(Array.isArray(t.optional.negative_tags) ? t.optional.negative_tags : [])].filter(Boolean).join(' · ') || 'Taken'}
+                        {isMissed(t) ? 'Missed' : [t.optional.trading_session, ...tagsOf(t).behaviour, ...tagsOf(t).technical].filter(Boolean).join(' · ') || 'Taken'}
                       </span>
                     </div>
                     <span className={`num ${isMissed(t) ? 'muted' : signTone(t.result_r)}`}>{fmtR(t.result_r)}</span>

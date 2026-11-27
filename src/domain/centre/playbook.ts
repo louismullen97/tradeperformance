@@ -74,7 +74,18 @@ export function applyPlaybook(trades: StandardTrade[], entries: PlaybookEntry[])
 /** A trade repository whose reads carry Playbook strategies. Writes pass straight through. */
 export function withPlaybook(repo: TradeRepository, playbook: PlaybookRepository): TradeRepository {
   return {
-    upsertMany: (trades) => repo.upsertMany(trades),
+    // Don't persist strategies that only came from the Playbook, so later Playbook edits still apply.
+    upsertMany: async (trades) => {
+      const raw = new Map((await repo.list()).map((t) => [t.id, t]));
+      return repo.upsertMany(
+        trades.map((t) => {
+          const stored = raw.get(t.id);
+          if (!stored || stored.optional.strategy || !t.optional.strategy) return t;
+          const { strategy: _derived, ...rest } = t.optional;
+          return { ...t, optional: rest };
+        }),
+      );
+    },
     list: async () => applyPlaybook(await repo.list(), await playbook.list()),
     count: () => repo.count(),
     removeDataset: (id) => repo.removeDataset(id),

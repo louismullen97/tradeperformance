@@ -49,3 +49,18 @@ export async function syncPlanItem(baseUrl: string, body: import('../../domain/r
   }
   return json as PublishedReview;
 }
+
+/** Saves a trade's review rating to its page in the Notion journal. */
+export async function syncTradeRating(baseUrl: string, body: import('../../domain/review/rating').SyncRatingRequest): Promise<PublishedReview> {
+  const res = await fetch(`${baseUrl}/trade-rating`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = (json as { error?: { message?: string } } | null)?.error?.message;
+    throw new Error(message ?? `Couldn't save the rating to Notion (HTTP ${res.status}).`);
+  }
+  return json as PublishedReview;
+}

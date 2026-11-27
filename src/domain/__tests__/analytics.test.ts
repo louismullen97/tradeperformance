@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFilter, breakdown, dailyStats, monthGrid, performance, tagDifference } from '../analytics/analytics';
+import { availableTagSources, applyFilter, breakdown, dailyStats, monthGrid, performance, tagDifference } from '../analytics/analytics';
 import { DIMENSIONS, getDimension, weekdayOf } from '../analytics/dimensions';
 import type { StandardTrade } from '../trades/types';
 
@@ -76,9 +76,11 @@ describe('tag difference', () => {
     t('2026-01-04', -1, { negative_tags: ['impulsive'] }),
     t('2026-01-05', -1, { negative_tags: ['impulsive'], positive_tags: ['HTF trend'] }),
   ];
-  const rows = tagDifference(trades, [{ key: 'positive_tags', label: 'Positive' }, { key: 'negative_tags', label: 'Negative' }]);
+  const rows = tagDifference(trades, availableTagSources(trades));
   it('compares how often tags appear on winners vs losers', () => {
-    const impulsive = rows.find((r) => r.tag === 'impulsive')!;
+    const impulsive = rows.find((r) => r.tag === 'Impulsive')!;
+    expect(impulsive.source).toBe('Behaviour');
+    expect(rows.find((r) => r.tag === 'HTF trend')!.source).toBe('Technical');
     expect(impulsive).toMatchObject({ trades: 2, inWins: 0, inLosses: 1, difference: -1, winRateWith: 0, lowSample: true });
     const htf = rows.find((r) => r.tag === 'HTF trend')!;
     expect(htf.inWins).toBeCloseTo(2 / 3, 3);
@@ -87,6 +89,6 @@ describe('tag difference', () => {
     expect(htf.winRateWithout).toBe(0.5);
   });
   it('sorts by the size of the difference', () => {
-    expect(rows[0].tag).toBe('impulsive');
+    expect(rows[0].tag).toBe('Impulsive');
   });
 });

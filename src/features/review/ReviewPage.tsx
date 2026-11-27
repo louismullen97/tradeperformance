@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { breakdown, dailyEquity, performance } from '../../domain/analytics/analytics';
 import { getDimension } from '../../domain/analytics/dimensions';
-import { psychologyTagsOf } from '../../domain/analytics/psychology';
+import { tagSummary, type TagTone } from '../../domain/tags/tags';
 import { periodRange, shiftPeriod, PERIOD_NOUN, type ReviewPeriod } from '../../domain/analytics/review';
 import type { FlowEntry, FlowRepository } from '../../domain/flow/flow';
 import { buildAsr, PLAN_LABEL } from '../../domain/review/asr';
 import { dayRows, discipline, opportunityGaps, patterns, repeatableTags, subPanels, tradeQuality } from '../../domain/review/centre';
 import { centreTarget } from '../../domain/centre/settings';
-import { syncPlanItem } from '../../sources/http/reviewPublisher';
+import { syncPlanItem, syncTradeRating } from '../../sources/http/reviewPublisher';
 import { planKey, type DailyRepository, type DailyReview, type PlanItem, type PlanRepository } from '../../domain/review/daily';
 import type { DataSourceConnector } from '../../domain/source/types';
 import type { TradeRepository } from '../../domain/trades/repository';
@@ -20,7 +20,10 @@ import { fmtDate, fmtPct, fmtR, fmtWinRate, Icon, signTone, Stat } from '../../u
 import { BreakdownTable } from '../performance/BreakdownTable';
 import { AsrDialog, type AsrChart } from './AsrDialog';
 import { DailyReviewPage } from './DailyReviewPage';
-import { DaySummaries, DisciplinePanel, GapsPanel, PatternsPanel, PlanPanel, RepeatableTagsPanel, ScoreTrend, SubPanels } from './CentreSections';
+import { DaySummaries, DisciplinePanel, GapsPanel, PatternsPanel, PlanPanel, RepeatableTagsPanel, ScoreTrend, SubPanels, type FocusCandidate } from './CentreSections';
+import { FocusAreas } from './FocusAreas';
+import { RateTrades, RatingGapsPanel } from './RatingReview';
+import { activeFocusAreas, MAX_ACTIVE_FOCUS } from '../../domain/review/focus';
 
 export interface ReviewPublishing {
   live: boolean;
@@ -48,15 +51,6 @@ function Delta({ value, unit, invert }: { value: number | null; unit: 'R' | 'pts
   return <span className={`delta delta--${cls}`}>{text} vs prior</span>;
 }
 
-function countTags(trades: StandardTrade[], get: (t: StandardTrade) => string[]) {
-  const m = new Map<string, number>();
-  for (const t of trades) for (const tag of get(t)) m.set(tag, (m.get(tag) ?? 0) + 1);
-  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-}
-const listOf = (key: string) => (t: StandardTrade) => {
-  const v = t.optional[key];
-  return Array.isArray(v) ? v : [];
-};
 
 function TradeList({ title, trades }: { title: string; trades: StandardTrade[] }) {
   return (
@@ -90,10 +84,10 @@ function TradeList({ title, trades }: { title: string; trades: StandardTrade[] }
   );
 }
 
-function TagList({ title, items, empty }: { title: string; items: [string, number][]; empty: string }) {
+function TagList({ title, items, empty, tone = 'neutral' }: { title: string; items: [string, number][]; empty: string; tone?: TagTone }) {
   const max = Math.max(1, ...items.map((i) => i[1]));
   return (
-    <div className="tag-list">
+    <div className={`tag-list tag-list--${tone}`}>
       <h3 className="label">{title}</h3>
       {items.length === 0 ? (
         <p className="muted small">{empty}</p>
@@ -165,6 +159,7 @@ function PeriodReview({
   const [reviews, setReviews] = useState<DailyReview[]>([]);
   const [planVersion, setPlanVersion] = useState(0);
   const [planSync, setPlanSync] = useState<string | null>(null);
+  const [rating, setRating] = useState<{ saving: Set<string>; error: string | null }>({ saving: new Set(), error: null });
   useEffect(() => void dailyRepo.list().then(setReviews), [dailyRepo]);
   const [all, setAll] = useState<StandardTrade[] | null>(null);
   const [anchor, setAnchor] = useState<string | null>(null);
@@ -197,6 +192,7 @@ function PeriodReview({
   const perf = useMemo(() => performance(taken), [taken]);
   const prev = useMemo(() => performance(prevTaken), [prevTaken]);
   const setups = useMemo(() => breakdown(taken, getDimension('setup')), [taken]);
+  const tagSections = useMemo(() => tagSummary(taken, missed), [taken, missed]);
   const missedSeries = useMemo((): LineSeries[] => {
     const realPts = dailyEquity(taken).map((p) => ({ date: p.date, value: p.r }));
     const potentialPts = dailyEquity([...taken, ...missed]).map((p) => ({ date: p.date, value: p.r }));
@@ -220,6 +216,39 @@ function PeriodReview({
   const nextKey = planKey(period, periodRange(period, shiftPeriod(period, anchor, 1)).start);
   void planVersion;
   const planItems = plans.get(key);
+  const focusEntries = activeFocusAreas(plans.entries());
+  const focusedSources = new Set(plans.entries().filter((e) => e.item.source).map((e) => e.item.source!));
+  const allTaken = all.filter((t) => !isMissed(t));
+  const addFocus = (c: FocusCandidate) => {
+    if (focusEntries.length >= MAX_ACTIVE_FOCUS && !window.confirm(`You already have ${focusEntries.length} active focus areas. We suggest no more than ${MAX_ACTIVE_FOCUS} at a time — add another anyway?`)) return;
+    const monthKey = planKey('month', periodRange('month', today).start);
+    const item: PlanItem = { id: `p${Date.now().toString(36)}`, text: c.label, status: 'open', source: c.source, goal: c.goal, start: today };
+    setPlan(monthKey)([...plans.get(monthKey), item]);
+  };
+  const closeFocus = (k: string, item: PlanItem, status: PlanItem['status']) => setPlan(k)(plans.get(k).map((x) => (x.id === item.id ? { ...x, status } : x)));
+
+  /** Save a review rating locally, then on the trade's Notion page. */
+  const rateTrade = async (t: StandardTrade, value: number | null) => {
+    const updated: StandardTrade = { ...t, optional: { ...t.optional, review_rating: value } };
+    setAll((prev) => (prev ? prev.map((x) => (x.id === t.id ? updated : x)) : prev));
+    await repo.upsertMany([updated]);
+    if (!publishing.live || t.source.kind !== 'notion') return;
+    setRating((r) => ({ saving: new Set(r.saving).add(t.id), error: null }));
+    try {
+      await syncTradeRating(publishing.apiBase, { dataSourceId: t.source.datasetId, pageId: t.source.recordId, value });
+      setRating((r) => {
+        const saving = new Set(r.saving);
+        saving.delete(t.id);
+        return { saving, error: null };
+      });
+    } catch (e) {
+      setRating((r) => {
+        const saving = new Set(r.saving);
+        saving.delete(t.id);
+        return { saving, error: `Saved in Tradelens, but not in Notion: ${e instanceof Error ? e.message : 'unknown error'}` };
+      });
+    }
+  };
   const nextItems = plans.get(nextKey);
   const setPlan = (k: string) => (items: PlanItem[]) => {
     const before = plans.get(k);
@@ -232,8 +261,9 @@ function PeriodReview({
   const pushPlans = async (k: string, before: PlanItem[], after: PlanItem[]) => {
     const dataSourceId = centreTarget('plans');
     if (!publishing.live || !dataSourceId) return;
+    const keyPeriod = k.slice(0, k.indexOf(':')) as ReviewPeriod;
     const start = k.slice(k.indexOf(':') + 1);
-    const { end } = periodRange(period, start);
+    const { end } = periodRange(keyPeriod, start);
     const changed = after.filter((i) => {
       const old = before.find((b) => b.id === i.id);
       return !old || old.text !== i.text || old.status !== i.status || !i.notion;
@@ -242,10 +272,10 @@ function PeriodReview({
     try {
       let next = after;
       for (const item of changed) {
-        const page = await syncPlanItem(publishing.apiBase, { dataSourceId, item, period, start, end });
+        const page = await syncPlanItem(publishing.apiBase, { dataSourceId, item, period: keyPeriod, start: item.start ?? start, end });
         if (page.id && !item.notion) next = next.map((x) => (x.id === item.id ? { ...x, notion: { pageId: page.id, url: page.url } } : x));
       }
-      for (const item of removed) await syncPlanItem(publishing.apiBase, { dataSourceId, item, period, start, end, archive: true });
+      for (const item of removed) await syncPlanItem(publishing.apiBase, { dataSourceId, item, period: keyPeriod, start, end, archive: true });
       if (next !== after) {
         // Keep any edits made while the sync was in flight; only attach the new page ids.
         plans.set(k, plans.get(k).map((x) => next.find((n) => n.id === x.id && n.notion && !x.notion) ?? x));
@@ -308,6 +338,8 @@ function PeriodReview({
         build={(images) => buildAsr({ period, range, taken, prevTaken, missed, flow, images, daily: reviews, plan: planItems, nextPlan: nextItems, today })}
       />
 
+      {(focusEntries.length > 0 || period === 'month') && <FocusAreas entries={focusEntries} trades={allTaken} today={today} onClose={closeFocus} />}
+
       {taken.length === 0 && missed.length === 0 ? (
         <div className="empty-state panel">
           <h2 className="section-title">No trades this {noun}</h2>
@@ -366,10 +398,12 @@ function PeriodReview({
           )}
 
           <DisciplinePanel d={disc} q={quality} />
+          {period === 'week' && <RateTrades trades={[...taken].sort((a, b) => a.trade_date.localeCompare(b.trade_date))} onRate={(t, v) => void rateTrade(t, v)} saving={rating.saving} error={rating.error} />}
+          <RatingGapsPanel trades={taken} />
           {period !== 'week' && <ScoreTrend rows={rows} />}
           {period === 'quarter' && <PatternsPanel {...patterns(taken)} />}
           {period !== 'week' && <RepeatableTagsPanel tags={repeatableTags(taken, rows)} />}
-          {period === 'month' && <GapsPanel g={opportunityGaps(taken, missed, rows, today)} />}
+          {period === 'month' && <GapsPanel g={opportunityGaps(taken, missed, rows, today)} onFocus={addFocus} focused={focusedSources} />}
 
           <div className="grid-2">
             <TradeList title="Best trades" trades={best} />
@@ -387,13 +421,20 @@ function PeriodReview({
 
           <section className="panel">
             <header className="panel__head">
-              <h2 className="section-title">Behaviour</h2>
+              <div>
+                <h2 className="section-title">Behaviour & tags</h2>
+                <p className="section-sub">Mistakes include missed trades, so each one shows its full cost.</p>
+              </div>
             </header>
-            <div className="tag-lists">
-              <TagList title="What went well" items={countTags(taken, listOf('positive_tags'))} empty="No positive tags." />
-              <TagList title="What to work on" items={countTags(taken, listOf('negative_tags'))} empty="No negative tags." />
-              <TagList title="Psychology" items={countTags([...taken, ...missed], psychologyTagsOf)} empty="No psychology tags." />
-            </div>
+            {tagSections.length === 0 ? (
+              <p className="panel__body muted">No tags this {noun}. Add Behaviour, Technical or Psychology tags to your trades in Notion to see patterns here.</p>
+            ) : (
+              <div className="tag-lists">
+                {tagSections.map((sec) => (
+                  <TagList key={sec.title} title={sec.title} tone={sec.tone} items={sec.items} empty="" />
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="panel">

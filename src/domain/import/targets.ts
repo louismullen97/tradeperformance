@@ -236,6 +236,11 @@ export function createPlanTarget(repo: PlanRepository): ImportTarget {
           const period = periodOfKind(typeof v.kind === 'string' ? v.kind : null);
           const status = (['open', 'kept', 'missed'].includes(v.status as string) ? v.status : 'open') as PlanStatus;
           const item: PlanItem = { id: `n_${r.record.id}`, text: String(v.text), status, notion: { pageId: r.record.id, url: r.record.url } };
+          if (typeof v.source === 'string' && v.source.includes('=')) {
+            item.source = v.source.trim();
+            item.goal = v.goal === 'better_r' ? 'better_r' : 'fewer';
+            item.start = v.period_start as string;
+          }
           return { key: planKey(period, periodRange(period, v.period_start as string).start), item };
         },
         (rows) => void repo.mergeImported(rows),

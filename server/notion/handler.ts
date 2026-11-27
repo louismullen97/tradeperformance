@@ -4,6 +4,7 @@ import { createAsrPage, type CreateAsrRequest } from './asr';
 import { NotionApiError, NotionClient } from './client';
 import { upsertDailyPage, type SyncDailyRequest } from './daily';
 import { syncPlanPage, type SyncPlanRequest } from './plans';
+import { syncReviewRating, type SyncRatingRequest } from './rating';
 
 /**
  * `/api/notion/*` routes. Framework-agnostic (plain Node req/res) so it can be
@@ -15,6 +16,7 @@ import { syncPlanPage, type SyncPlanRequest } from './plans';
  *   GET /data-sources/:id/records    → SourceRecord[]
  *   GET /data-sources/:id/count      → { count }
  *   POST /reviews                    → { id, url }  (creates an ASR page; needs Insert content)
+ *   POST /trade-rating               → { id, url }  (sets a trade's review rating; needs Update content)
  *   POST /plans                      → { id, url }  (creates/updates/archives a Plans item)
  *   POST /daily                      → { id, url, created }  (creates/updates a Daily ASR page; needs Insert + Update content)
  */
@@ -119,7 +121,7 @@ function isDailyRequest(b: unknown): b is SyncDailyRequest {
 
 export async function handleNotionApi(req: IncomingMessage, res: ServerResponse, config: NotionApiConfig): Promise<void> {
   const path = new URL(req.url ?? '/', 'http://local').pathname.replace(/\/+$/, '') || '/';
-  const isWrite = req.method === 'POST' && (path === '/reviews' || path === '/daily' || path === '/plans');
+  const isWrite = req.method === 'POST' && ['/reviews', '/daily', '/plans', '/trade-rating'].includes(path);
   if (req.method !== 'GET' && !isWrite) return send(res, 405, { error: { code: 'method_not_allowed', message: 'Method not allowed' } });
 
   if (!config.token) {
@@ -131,6 +133,13 @@ export async function handleNotionApi(req: IncomingMessage, res: ServerResponse,
   try {
     if (isWrite) {
       const body = await readJson<unknown>(req);
+      if (path === '/trade-rating') {
+        const b = body as SyncRatingRequest;
+        const id = /^[0-9a-fA-F-]{32,36}$/;
+        if (!b || !id.test(b.dataSourceId ?? '') || !id.test(b.pageId ?? '') || !(b.value === null || (typeof b.value === 'number' && b.value >= 0 && b.value <= 5)))
+          return send(res, 400, { error: { code: 'bad_request', message: 'Expected { dataSourceId, pageId, value (0–5 or null) }.' } });
+        return send(res, 200, await syncReviewRating(client, b));
+      }
       if (path === '/plans') {
         if (!isPlanRequest(body)) return send(res, 400, { error: { code: 'bad_request', message: 'Expected { dataSourceId, item, period, start, end }.' } });
         return send(res, 200, await syncPlanPage(client, body));

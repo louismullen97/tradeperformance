@@ -1,6 +1,7 @@
 import { breakdown, performance, type PerformanceStats } from '../analytics/analytics';
 import { getDimension } from '../analytics/dimensions';
-import { psychologyTagsOf } from '../analytics/psychology';
+import { tagSummary } from '../tags/tags';
+import { ratingGaps } from './rating';
 import type { PeriodRange, ReviewPeriod } from '../analytics/review';
 import { dailyFlow, flowByDayOutcome, flowTagImpact, type FlowEntry } from '../flow/flow';
 import type { StandardTrade } from '../trades/types';
@@ -105,15 +106,6 @@ const plain = (text: string): Rich => [span(text)];
 const dateFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 const fmtDay = (iso: string) => dateFmt.format(new Date(`${iso}T00:00:00Z`));
 
-function countTags(trades: StandardTrade[], get: (t: StandardTrade) => string[], limit = 5): [string, number][] {
-  const m = new Map<string, number>();
-  for (const t of trades) for (const tag of get(t)) m.set(tag, (m.get(tag) ?? 0) + 1);
-  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, limit);
-}
-const listOf = (key: string) => (t: StandardTrade) => {
-  const v = t.optional[key];
-  return Array.isArray(v) ? (v as string[]) : [];
-};
 
 function tradeLine(t: StandardTrade): Rich {
   const detail = [t.setup, typeof t.optional.timeframe === 'string' ? t.optional.timeframe : null, fmtDay(t.trade_date)].filter(Boolean).join(' · ');
@@ -373,18 +365,30 @@ export function buildAsr(input: AsrInput): AsrDocument {
   }
 
   // Behaviour
-  const tagSections: [string, [string, number][]][] = [
-    ['What went well', countTags(taken, listOf('positive_tags'))],
-    ['What to work on', countTags(taken, listOf('negative_tags'))],
-    ['Psychology', countTags([...taken, ...missed], psychologyTagsOf)],
-  ];
-  if (tagSections.some(([, items]) => items.length)) {
-    blocks.push({ type: 'heading', level: 2, text: 'Behaviour' });
-    for (const [title, items] of tagSections) {
-      if (!items.length) continue;
-      blocks.push({ type: 'heading', level: 3, text: title });
-      blocks.push({ type: 'bullets', items: items.map(([tag, n]) => [span(tag, { bold: true }), span(` · ${n} trade${n === 1 ? '' : 's'}`, { color: 'gray' })]) });
+  const tagSections = tagSummary(taken, missed);
+  if (tagSections.length) {
+    blocks.push({ type: 'heading', level: 2, text: 'Behaviour & tags' });
+    for (const section of tagSections) {
+      blocks.push({ type: 'heading', level: 3, text: section.title });
+      const color = section.tone === 'good' ? 'green' : section.tone === 'bad' ? 'red' : undefined;
+      blocks.push({ type: 'bullets', items: section.items.map(([tag, n]) => [span(tag, { bold: true, color }), span(` · ${n} trade${n === 1 ? '' : 's'}`, { color: 'gray' })]) });
     }
+  }
+
+  // Rating gaps
+  const gaps = ratingGaps(taken);
+  if (gaps.compared > 0) {
+    blocks.push({ type: 'heading', level: 2, text: 'Rating review' });
+    blocks.push({
+      type: 'bullets',
+      items: [
+        [span('Average rating at the time '), span(String(gaps.avgOriginal), { bold: true }), span(' → on review '), span(String(gaps.avgReview), { bold: true }), span(` (${gaps.compared} trades)`, { color: 'gray' })],
+        [
+          span(`${gaps.overrated.length} trade${gaps.overrated.length === 1 ? '' : 's'} rated 2+ points higher at the time than on review`),
+          ...(gaps.overratedTags.length ? [span(` — most often tagged ${gaps.overratedTags.map((x) => x.tag).join(', ')}`, { color: 'gray' })] : []),
+        ],
+      ],
+    });
   }
 
   // Flow

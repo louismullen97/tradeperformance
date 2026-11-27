@@ -57,6 +57,11 @@ export interface ValidationReport {
   issueCounts: Partial<Record<IssueCode, number>>;
   /** Column-level observations, e.g. inferred date order or percent rescaling. */
   columnNotes: Record<string, string[]>;
+  /**
+   * Multi-select columns not mapped to any field. Trade imports keep them as
+   * custom tag groups, so a column the user adds later flows through the app.
+   */
+  extraTagColumns?: { propertyId: string; name: string }[];
 }
 
 export const ISSUE_LABEL: Record<IssueCode, string> = {

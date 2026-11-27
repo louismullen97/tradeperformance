@@ -19,6 +19,10 @@ export function planProperties(ds: NotionDataSource, req: SyncPlanRequest): Reco
   if (date) out[date.name] = { date: { start: req.start, end: req.end } };
   const status = find(['select', 'status'], ['status', 'result', 'outcome']);
   if (status) out[status.name] = status.type === 'status' ? { status: { name: STATUS[req.item.status] } } : { select: { name: STATUS[req.item.status] } };
+  const source = find(['rich_text'], ['source', 'leak', 'tracks']);
+  if (source && req.item.source) out[source.name] = { rich_text: [{ type: 'text', text: { content: req.item.source.slice(0, 2000) } }] };
+  const goal = find(['select'], ['goal', 'target', 'aim']);
+  if (goal && req.item.goal) out[goal.name] = { select: { name: req.item.goal === 'better_r' ? 'Better average R' : 'Fewer occurrences' } };
   return out;
 }
 

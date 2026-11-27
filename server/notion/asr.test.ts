@@ -32,7 +32,7 @@ describe('buildAsr', () => {
   });
   it('includes scorecard, charts, trades, behaviour, missed and reflection sections', () => {
     const headings = doc.blocks.filter((b) => b.type === 'heading').map((b) => (b as { text: string }).text);
-    expect(headings).toEqual(expect.arrayContaining(['Scorecard', 'Equity', 'Setups', 'Best & worst trades', 'Behaviour', 'Missed trades', 'Reflection']));
+    expect(headings).toEqual(expect.arrayContaining(['Scorecard', 'Equity', 'Setups', 'Best & worst trades', 'Behaviour & tags', 'Missed trades', 'Reflection']));
     const scorecard = doc.blocks.find((b) => b.type === 'table')!;
     expect(scorecard.type === 'table' && scorecard.rows[0].map((c) => c.map((s) => s.text).join(''))).toEqual(['Net R', '+4.00R', '−1.00R', '+5.00R']);
     expect(doc.blocks.filter((b) => b.type === 'image').map((b) => (b as { image: string }).image)).toEqual(['equity', 'missed']);

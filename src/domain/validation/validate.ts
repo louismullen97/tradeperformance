@@ -207,6 +207,9 @@ export function validateRecords(
     counts,
     issueCounts,
     columnNotes,
+    extraTagColumns: properties
+      .filter((p) => p.type === 'multi_select' && !columns.some((c) => c.property.id === p.id))
+      .map((p) => ({ propertyId: p.id, name: p.name })),
   };
 }
 

@@ -40,6 +40,19 @@ export interface ImportBatch {
   counts: { imported: number; skippedInvalid: number; skippedByUser: number; total: number };
 }
 
+/** Optional-field key for a custom multi-select column, e.g. `custom:Confluences`. */
+export const CUSTOM_TAG_PREFIX = 'custom:';
+
+/** Values of the unmapped multi-select columns, kept as custom tag groups. */
+function customTags(r: RecordValidation, report: ValidationReport): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const col of report.extraTagColumns ?? []) {
+    const raw = r.record.values[col.propertyId];
+    if (raw?.kind === 'multi_select' && raw.names.length) out[`${CUSTOM_TAG_PREFIX}${col.name}`] = raw.names;
+  }
+  return out;
+}
+
 /** Turn a validation report + user decisions into standardised trades. Pure. */
 export function buildImportBatch(
   report: ValidationReport,
@@ -79,7 +92,7 @@ export function buildImportBatch(
       risk_percentage: v.risk_percentage as number,
       result_r: v.result_r as number,
       profit_loss_percentage: v.profit_loss_percentage as number,
-      optional: Object.fromEntries(optionalKeys.filter((k) => k in v).map((k) => [k, v[k]])),
+      optional: { ...Object.fromEntries(optionalKeys.filter((k) => k in v).map((k) => [k, v[k]])), ...customTags(r, report) },
       source: {
         kind: dataset.kind,
         datasetId: dataset.id,

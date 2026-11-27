@@ -162,12 +162,21 @@ export interface PlanItem {
   status: PlanStatus;
   /** The item's page in a Notion Plans database, once synced or imported. */
   notion?: { pageId: string; url?: string };
+  /** Focus areas: the leak being tracked, as `dimension=value` pairs joined by `&` (e.g. `behaviour=Revenge trading`). */
+  source?: string;
+  /** Focus areas: what counts as improving. */
+  goal?: FocusGoal;
+  /** Focus areas: when tracking started (YYYY-MM-DD). */
+  start?: string;
 }
+export type FocusGoal = 'fewer' | 'better_r';
 export interface PlanRepository {
   get(key: string): PlanItem[];
   set(key: string, items: PlanItem[]): void;
   /** Merge items imported from Notion, matching by page id. */
   mergeImported(items: { key: string; item: PlanItem }[]): number;
+  /** Every item with its period key. */
+  entries(): { key: string; item: PlanItem }[];
 }
 
 /** Plan kinds as named in a Notion Plans database, and the review period each belongs to. */
@@ -195,6 +204,18 @@ export const PLAN_FIELDS: readonly FieldDefinition[] = [
     vocabulary: { open: ['open', 'not started', 'in progress', 'todo', 'to do'], kept: ['kept', 'done', 'achieved', 'complete', 'completed', 'yes'], missed: ['missed', 'failed', 'not done', 'no', 'broken'] },
     example: 'Kept',
   },
+  { key: 'source', label: 'Source', description: 'Focus areas: the leak being tracked (set by Tradelens).', required: false, valueKind: 'string', group: 'meta', aliases: ['Source', 'Leak', 'Tracks'], example: 'behaviour=Revenge trading' },
+  {
+    key: 'goal',
+    label: 'Goal',
+    description: 'Focus areas: fewer occurrences or better average R.',
+    required: false,
+    valueKind: 'string',
+    group: 'meta',
+    aliases: ['Goal', 'Target', 'Aim'],
+    vocabulary: { fewer: ['fewer occurrences', 'fewer', 'less often', 'reduce'], better_r: ['better average r', 'better r', 'improve r', 'better avg r'] },
+    example: 'Fewer occurrences',
+  },
 ];
 
 const PLAN_KEY = 'tradelens.plans.v1';
@@ -221,6 +242,9 @@ export class LocalStoragePlanRepository implements PlanRepository {
     } catch {
       /* storage unavailable */
     }
+  }
+  entries() {
+    return Object.entries(this.plans).flatMap(([key, items]) => items.map((item) => ({ key, item })));
   }
   mergeImported(items: { key: string; item: PlanItem }[]) {
     const ids = new Set(items.map((i) => i.item.notion?.pageId));

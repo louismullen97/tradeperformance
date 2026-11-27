@@ -2,30 +2,13 @@ import { summarise, type TradeSummary } from '../trades/summary';
 import type { StandardTrade } from '../trades/types';
 import { MIN_TAG_SAMPLE } from './analytics';
 import { DIMENSIONS, type Dimension } from './dimensions';
+import { behaviourTone, tagGroups } from '../tags/tags';
 
 // ── Tag groups (things recorded per trade in the journal) ────────────────
 
-const list = (t: StandardTrade, key: string): string[] => {
-  const v = t.optional[key];
-  return Array.isArray(v) ? v : typeof v === 'string' && v ? v.split(/\s*,\s*/) : [];
-};
-
-/** Tag-like groups, expressed as dimensions so every analysis can treat them alike. */
-export const TAG_GROUPS: Dimension[] = [
-  { key: 'positive_tags', label: 'Positive tags', values: (t) => list(t, 'positive_tags') },
-  { key: 'negative_tags', label: 'Negative tags', values: (t) => list(t, 'negative_tags') },
-  { key: 'psychology_tags', label: 'Psychology', values: (t) => list(t, 'psychology_tags') },
-  { key: 'tags', label: 'Other tags', values: (t) => list(t, 'tags') },
-  {
-    key: 'execution_rating',
-    label: 'Trade rating',
-    values: (t) => (typeof t.optional.execution_rating === 'number' ? [`${Math.round(t.optional.execution_rating)}/5`] : []),
-    order: ['5/5', '4/5', '3/5', '2/5', '1/5'],
-  },
-];
-
+/** Tag groups with data — behaviour, technical, psychology, custom columns and rating. */
 export function availableTagGroups(trades: StandardTrade[]): Dimension[] {
-  return TAG_GROUPS.filter((g) => trades.some((t) => g.values(t).length > 0));
+  return tagGroups(trades, { rating: true });
 }
 
 function values(trades: StandardTrade[], dim: Dimension, limit?: number): string[] {
@@ -102,7 +85,7 @@ export function edgeAnalysis(trades: StandardTrade[], opts: { minSample?: number
   const limit = opts.limit ?? 6;
   const overall = summarise(trades);
   const base = overall.avgR ?? 0;
-  const dims = [...DIMENSIONS.filter((d) => ROW_DIMS.includes(d.key)), ...TAG_GROUPS].filter((d) => trades.some((t) => d.values(t).length));
+  const dims = [...DIMENSIONS.filter((d) => ROW_DIMS.includes(d.key)), ...tagGroups(trades, { rating: true })].filter((d) => trades.some((t) => d.values(t).length));
   const segments: Segment[] = [];
 
   const add = (factors: { dim: Dimension; value: string }[]) => {
@@ -144,14 +127,67 @@ export function edgeAnalysis(trades: StandardTrade[], opts: { minSample?: number
     .slice(0, limit);
 
   const profile: EdgeReport['profile'] = [];
-  for (const key of ['strategy', 'setup', 'timeframe', 'trading_session', 'management_style', 'psychology_tags', 'execution_rating']) {
+  for (const key of ['strategy', 'setup', 'timeframe', 'trading_session', 'management_style', 'behaviour', 'technical', 'psychology', 'execution_rating']) {
     const d = dims.find((x) => x.key === key);
     if (!d) continue;
     // A single strategy says nothing about where the edge is.
     if (key === 'strategy' && new Set(trades.flatMap(d.values)).size < 2) continue;
-    const best = (singles.get(d.label) ?? []).filter((s) => (s.stats.avgR ?? 0) > 0).sort((a, b) => b.score - a.score)[0];
+    // A mistake can't be part of the A+ trade, even if it happened to pay.
+    const candidates = (singles.get(d.label) ?? []).filter((s) => (s.stats.avgR ?? 0) > 0 && (key !== 'behaviour' || behaviourTone(s.factors[0].value) !== 'bad'));
+    const best = candidates.sort((a, b) => b.score - a.score)[0];
     if (best) profile.push({ dimension: d.label, segment: best });
   }
 
   return { overall, edge, needsWork, profile, minSample };
+}
+
+// ── Tags per setup ───────────────────────────────────────────────────────
+
+export interface SetupTag {
+  group: string;
+  tag: string;
+  stats: TradeSummary;
+  /** Average R shrunk towards the setup's own average. */
+  score: number;
+  lowSample: boolean;
+}
+
+export interface SetupTags {
+  setup: string;
+  stats: TradeSummary;
+  best: SetupTag[];
+  worst: SetupTag[];
+}
+
+/**
+ * For each setup, the tags (from every tag group) that go with its best and
+ * worst results. Tags need at least `minTags` trades within the setup; under
+ * MIN_TAG_SAMPLE they are flagged as low sample.
+ */
+export function tagsBySetup(trades: StandardTrade[], opts: { minTags?: number; limit?: number } = {}): SetupTags[] {
+  const minTags = opts.minTags ?? 3;
+  const limit = opts.limit ?? 3;
+  const groups = tagGroups(trades);
+  const setups = [...new Set(trades.map((t) => t.setup))];
+  return setups
+    .map((setup) => {
+      const own = trades.filter((t) => t.setup === setup);
+      const stats = summarise(own);
+      const base = stats.avgR ?? 0;
+      const tags: SetupTag[] = [];
+      for (const g of groups) {
+        for (const tag of new Set(own.flatMap(g.values))) {
+          const withTag = own.filter((t) => g.values(t).includes(tag));
+          if (withTag.length < minTags) continue;
+          const s = summarise(withTag);
+          const n = withTag.length;
+          tags.push({ group: g.label, tag, stats: s, score: Math.round((((s.avgR ?? 0) * n + base * SHRINK_TRADES) / (n + SHRINK_TRADES)) * 1000) / 1000, lowSample: n < MIN_TAG_SAMPLE });
+        }
+      }
+      const best = tags.filter((t) => (t.stats.avgR ?? 0) > 0 && t.score >= base).sort((a, b) => b.score - a.score || b.stats.count - a.stats.count).slice(0, limit);
+      const worst = tags.filter((t) => (t.stats.avgR ?? 0) < base && t.score < base).sort((a, b) => a.score - b.score || b.stats.count - a.stats.count).slice(0, limit);
+      return { setup, stats, best, worst };
+    })
+    .filter((s) => s.best.length || s.worst.length)
+    .sort((a, b) => b.stats.count - a.stats.count);
 }

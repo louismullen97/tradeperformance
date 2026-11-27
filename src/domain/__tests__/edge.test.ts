@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getDimension } from '../analytics/dimensions';
-import { edgeAnalysis, tagMatrix, TAG_GROUPS } from '../analytics/edge';
+import { edgeAnalysis, tagMatrix } from '../analytics/edge';
+import { tagGroup } from '../tags/tags';
 import { dailyFlow, flowByDayOutcome, flowByTimeOfDay, flowCorrelation, tradesByFlowBand, type FlowEntry } from '../flow/flow';
 import { goalProgress, newGoal } from '../goals/goals';
 import type { StandardTrade } from '../trades/types';
@@ -40,7 +41,7 @@ describe('edge', () => {
 
 describe('tag matrix', () => {
   it('crosses a dimension with a tag group', () => {
-    const m = tagMatrix(trades, getDimension('setup'), TAG_GROUPS.find((g) => g.key === 'psychology_tags')!);
+    const m = tagMatrix(trades, getDimension('setup'), tagGroup('psychology'));
     expect(m.cols).toEqual(['Felt calm', 'FOMO']);
     expect(m.cell('3 Touch', 'Felt calm').stats).toMatchObject({ count: 6, winRate: 1, avgR: 2 });
     expect(m.cell('3 Touch', 'FOMO').stats.count).toBe(0);

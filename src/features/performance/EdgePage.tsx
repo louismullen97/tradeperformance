@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { applyFilter, presetRange, type RangePreset } from '../../domain/analytics/analytics';
-import { edgeAnalysis, SHRINK_TRADES, type Segment } from '../../domain/analytics/edge';
+import { edgeAnalysis, SHRINK_TRADES, tagsBySetup, type Segment, type SetupTag } from '../../domain/analytics/edge';
 import type { TradeRepository } from '../../domain/trades/repository';
 import { takenOnly } from '../../domain/trades/status';
 import type { StandardTrade } from '../../domain/trades/types';
@@ -51,6 +51,31 @@ function SegmentCard({ s, overall, kind, max }: { s: Segment; overall: number; k
   );
 }
 
+function SetupTagList({ title, items, kind }: { title: string; items: SetupTag[]; kind: 'gain' | 'loss' }) {
+  return (
+    <div className="setup-tags__list">
+      <span className="label">{title}</span>
+      {items.length === 0 ? (
+        <span className="muted small">Nothing stands out yet.</span>
+      ) : (
+        <ul>
+          {items.map((t) => (
+            <li key={t.group + t.tag}>
+              <span className="setup-tags__tag">
+                <span className={`tag tag--${kind}`}>{t.tag}</span>
+                <span className="muted small">{t.group}</span>
+                {t.lowSample && <span className="low-sample">Low sample</span>}
+              </span>
+              <span className={`num num-${kind}`}>{fmtR(t.stats.avgR)}</span>
+              <span className="muted small num">{t.stats.count}×</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function EdgePage({ trades: repo }: { trades: TradeRepository }) {
   const [all, setAll] = useState<StandardTrade[] | null>(null);
   const [preset, setPreset] = useState<RangePreset>('all');
@@ -58,6 +83,7 @@ export function EdgePage({ trades: repo }: { trades: TradeRepository }) {
 
   const trades = useMemo(() => applyFilter(all ?? [], { dims: {}, ...presetRange(preset) }, []), [all, preset]);
   const report = useMemo(() => edgeAnalysis(trades), [trades]);
+  const bySetup = useMemo(() => tagsBySetup(trades), [trades]);
 
   if (!all) return null;
   const overall = report.overall.avgR ?? 0;
@@ -144,6 +170,33 @@ export function EdgePage({ trades: repo }: { trades: TradeRepository }) {
           )}
         </section>
       </div>
+
+      <section className="panel">
+        <header className="panel__head">
+          <div>
+            <h2 className="section-title">Tags by setup</h2>
+            <p className="section-sub">For each setup, the behaviour, technical, psychology and custom tags that tend to go with its best and worst results. Needs 3+ trades per tag; under 5 is marked low sample.</p>
+          </div>
+        </header>
+        {bySetup.length === 0 ? (
+          <p className="panel__body muted">No tag stands out within a setup yet. Tag your trades in Notion (Behaviour, Technical, Psychology) and patterns will appear here as trades build up.</p>
+        ) : (
+          <div className="setup-tags">
+            {bySetup.map((s) => (
+              <div key={s.setup} className="setup-tags__card">
+                <div className="setup-tags__head">
+                  <span className="strong">{s.setup}</span>
+                  <span className="muted small">
+                    {s.stats.count} trades · {fmtR(s.stats.avgR)} avg
+                  </span>
+                </div>
+                <SetupTagList title="Best with" items={s.best} kind="gain" />
+                <SetupTagList title="Worst with" items={s.worst} kind="loss" />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <p className="method-note muted">
         <Icon name="info" size={12} /> Every setup, timeframe, session, pair, management style, tag and trade rating — and setup combined with each of them — is scored on

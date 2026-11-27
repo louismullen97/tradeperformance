@@ -44,7 +44,7 @@ describe('Review Centre', () => {
   });
   it('finds repeatable tags with the R attached', () => {
     const tags = repeatableTags(trades, rows, 2);
-    expect(tags.find((x) => x.tag === 'Patient')).toMatchObject({ kind: 'Trade · positive', count: 2, netR: 5 });
+    expect(tags.find((x) => x.tag === 'Patient')).toMatchObject({ kind: 'Behaviour', tone: 'positive', count: 2, netR: 5 });
     expect(tags.find((x) => x.tag === 'Followed my plan')).toMatchObject({ kind: 'Day · win', count: 2, netR: 5 });
   });
   it('builds week panels for a month', () => {
@@ -86,5 +86,29 @@ describe('Daily ASR mapping', () => {
     const cfg = createSuggestedConfig({ id: 'da', kind: 'notion', name: 'Daily ASR', recordCount: 0 }, { datasetId: 'da', properties: props, fingerprint: schemaFingerprint(props) }, DAILY_FIELDS, 'daily');
     const name = (k: string) => props.find((p) => p.id === cfg.entries[k].propertyId)?.name;
     expect(DAILY_FIELDS.map((f) => name(f.key))).toEqual(['Date', 'Performance', 'Flow', 'Wins', 'Mistakes', 'Emotions', 'Observations', 'Decisions', 'Lesson']);
+  });
+});
+
+import { focusProgress, matchesSource, sourceLabel } from '../review/focus';
+
+describe('focus areas', () => {
+  const rt = (date: string, r: number) => t(date, r, { behaviour_tags: ['Revenge trading'] });
+  // 4 revenge trades in the 30 days before 1 Nov, 1 since.
+  const trades = [rt('2026-10-05', -1), rt('2026-10-12', -1), rt('2026-10-20', -1), rt('2026-10-28', -1), rt('2026-11-10', -1), t('2026-11-11', 2, {})];
+  const item = { id: 'f', text: 'Revenge trading', status: 'open' as const, source: 'behaviour=Revenge trading', goal: 'fewer' as const, start: '2026-11-01' };
+
+  it('reads a source', () => {
+    expect(sourceLabel('setup=2 Touch&timeframe=5m')).toBe('2 Touch + 5m');
+    expect(trades.filter(matchesSource(item.source))).toHaveLength(5);
+  });
+  it('measures progress against the 30 days before', () => {
+    const p = focusProgress(item, trades, '2026-11-30', '2026-11-01')!;
+    expect(p).toMatchObject({ days: 30, expectedCount: 4, rSaved: 3, status: 'improving', lowSample: false });
+    expect(p.baseline.count).toBe(4);
+    expect(p.current.count).toBe(1);
+  });
+  it('flags it getting worse', () => {
+    const more = [...trades, rt('2026-11-03', -1), rt('2026-11-04', -1)];
+    expect(focusProgress(item, more, '2026-11-10', '2026-11-01')!.status).toBe('worse');
   });
 });

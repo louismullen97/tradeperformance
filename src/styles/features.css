@@ -2338,3 +2338,331 @@ button.highlight:hover {
 .centre-card__title {
   flex: 1 1 320px;
 }
+.tag-list--good .tag-list__bar > span {
+  background: var(--gain);
+}
+.tag-list--bad .tag-list__bar > span {
+  background: var(--loss);
+}
+.trade-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  margin: var(--space-3) 0;
+}
+.trade-tags__group {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.trade-tags__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.trade-tags--empty {
+  margin: var(--space-2) 0;
+}
+
+/* ── Psychology insights ─────────────────────────────────────────────── */
+.insight-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  padding: 0 var(--space-5) var(--space-5);
+}
+.insight-cols .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--space-2);
+}
+.insight-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.insight-card {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  box-shadow: inset 3px 0 0 var(--border-strong), inset 0 0 0 1px var(--border);
+}
+.insight-card--loss {
+  box-shadow: inset 3px 0 0 var(--loss), inset 0 0 0 1px var(--border);
+}
+.insight-card--win {
+  box-shadow: inset 3px 0 0 var(--gain), inset 0 0 0 1px var(--border);
+}
+.insight-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.insight-card__factor {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+}
+.insight-card__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+.insight-card__bars {
+  display: grid;
+  gap: 3px;
+}
+.insight-card__bar {
+  display: block;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.insight-card__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.insight-card__fill--loss {
+  background: var(--loss);
+}
+.insight-card__fill--win {
+  background: var(--gain);
+}
+.insight-card__fill--base {
+  background: var(--chart-ref);
+}
+.insight-card__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-3);
+}
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  margin-right: 2px;
+  vertical-align: middle;
+}
+.dot--loss {
+  background: var(--loss);
+}
+.dot--win {
+  background: var(--gain);
+}
+.dot--base {
+  background: var(--chart-ref);
+}
+@media (max-width: 900px) {
+  .insight-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Edge: tags by setup */
+.setup-tags {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-3);
+  padding: 0 var(--space-5) var(--space-5);
+}
+.setup-tags__card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.setup-tags__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.setup-tags__list {
+  display: grid;
+  gap: 6px;
+}
+.setup-tags__list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.setup-tags__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 32px;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-sm);
+}
+.setup-tags__tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+/* Focus areas */
+.focus-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-5) var(--space-5);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+.focus-card {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.focus-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-2);
+}
+.focus-card__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+.focus-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-2);
+}
+.focus-card__actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 4px;
+}
+.status-pill {
+  display: inline-flex;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  background: var(--surface-sunken);
+  color: var(--text-2);
+}
+.status-pill--gain {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.status-pill--loss {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.gap-list li .btn {
+  margin-left: auto;
+  flex: none;
+}
+
+/* Review rating */
+.rate-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 var(--space-2);
+}
+.rate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 80px auto 44px;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 8px var(--space-5);
+  box-shadow: inset 0 1px 0 var(--divider);
+}
+.rate-row__main,
+.rate-row__orig {
+  display: grid;
+  min-width: 0;
+}
+.rate-row__r {
+  text-align: right;
+}
+.rate-row__gap {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.rate-picker {
+  display: inline-flex;
+  gap: 3px;
+}
+.rate-picker__btn {
+  width: 30px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.rate-picker__btn.is-active {
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-weight: var(--weight-semibold);
+}
+.rate-error {
+  margin: 0 var(--space-5) var(--space-3);
+}
+.rating-gaps {
+  display: grid;
+  gap: var(--space-3);
+}
+.rating-gaps__nums {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.rating-gaps__nums > span:not(.muted) {
+  display: grid;
+}
+.rating-gaps__big {
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+}
+.rating-gaps__list {
+  padding: 0;
+}
+@media (max-width: 640px) {
+  .rate-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+  }
+  .rate-row__orig {
+    grid-column: 1;
+  }
+  .rate-picker {
+    grid-column: 1 / -1;
+  }
+  .rate-row__gap {
+    display: none;
+  }
+}
+/* A+ profile: cell borders instead of a filled background, so a partial last row has no grey block. */
+.profile {
+  gap: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--divider);
+}
+.profile__item {
+  box-shadow: inset -1px -1px 0 var(--divider);
+}

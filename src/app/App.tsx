@@ -92,7 +92,7 @@ export function App({
       }}
     >
       {view === 'imports' && demo && <ModeBanner status={status} />}
-      {view === 'overview' && <OverviewPage trades={trades} goals={goals} />}
+      {view === 'overview' && <OverviewPage trades={trades} goals={goals} plans={plans} />}
       {view === 'journal' && <JournalPage trades={trades} />}
       {view === 'performance' && sub === 'overview' && <PerformanceOverview trades={trades} />}
       {view === 'performance' && (sub === 'setup' || sub === 'timeframe') && <DimensionPerformance key={sub} trades={trades} sub={sub} />}
@@ -101,7 +101,7 @@ export function App({
       {view === 'review' && (
         <ReviewPage key={period} trades={trades} period={period} date={date} flow={flow} daily={daily} plans={plans} publishing={{ live: !demo, connector: services.connector, apiBase: '/api/notion' }} />
       )}
-      {view === 'psychology' && psych === 'overview' && <PsychologyPage trades={trades} />}
+      {view === 'psychology' && psych === 'overview' && <PsychologyPage trades={trades} flow={flow} />}
       {view === 'psychology' && psych === 'flow' && <FlowZonePage trades={trades} flow={flow} />}
       {view === 'missed' && <MissedTradesPage trades={trades} />}
       {view === 'imports' && <ImportWizard services={services} />}

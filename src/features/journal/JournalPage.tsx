@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { TRADE_FIELDS } from '../../domain/fields/registry';
+import { tagGroup, tagGroups, tagsOf, toneOf } from '../../domain/tags/tags';
 import type { TradeRepository } from '../../domain/trades/repository';
 import { takenOnly } from '../../domain/trades/status';
 import { amountOf, outcomeOf, summarise, type Outcome } from '../../domain/trades/summary';
@@ -9,8 +10,9 @@ import { PageHeader } from '../../ui/PageHeader';
 import { Badge, fmtAmount, fmtDate, fmtPct, fmtR, fmtRisk, Icon, signTone, Stat } from '../../ui/primitives';
 
 type SortKey = 'trade_date' | 'result_r' | 'profit_loss_percentage' | 'risk_percentage';
-type Filters = { pair: string; setup: string; management: string; account: string; outcome: '' | Outcome; dataset: string };
-const NO_FILTERS: Filters = { pair: '', setup: '', management: '', account: '', outcome: '', dataset: '' };
+type Filters = { pair: string; setup: string; management: string; account: string; outcome: '' | Outcome; dataset: string; tag: string };
+const NO_FILTERS: Filters = { pair: '', setup: '', management: '', account: '', outcome: '', dataset: '', tag: '' };
+const TAG_SEP = '\u0001';
 
 const OUTCOME_LABEL: Record<Outcome, string> = { win: 'Win', loss: 'Loss', breakeven: 'BE' };
 const OUTCOME_TONE = { win: 'positive', loss: 'negative', breakeven: 'neutral' } as const;
@@ -38,6 +40,38 @@ function formatOptional(v: TradeFieldValue, key: string) {
   return String(v);
 }
 
+/** A trade's tags, grouped: behaviour (good / mistake), technical, psychology, other and custom columns. */
+function TradeTags({ trade }: { trade: StandardTrade }) {
+  const tags = tagsOf(trade);
+  const groups: { label: string; kind: 'behaviour' | 'technical' | 'psychology' | 'other' | 'custom'; values: string[] }[] = [
+    { label: 'Behaviour', kind: 'behaviour' as const, values: tags.behaviour },
+    { label: 'Technical', kind: 'technical' as const, values: tags.technical },
+    { label: 'Psychology', kind: 'psychology' as const, values: tags.psychology },
+    { label: 'Other tags', kind: 'other' as const, values: tags.other },
+    ...Object.entries(tags.custom).map(([label, values]) => ({ label, kind: 'custom' as const, values })),
+  ].filter((g) => g.values.length);
+  if (!groups.length) return <p className="trade-tags trade-tags--empty muted small">No tags on this trade.</p>;
+  return (
+    <div className="trade-tags">
+      {groups.map((g) => (
+        <div key={g.label} className="trade-tags__group">
+          <span className="eyebrow">{g.label}</span>
+          <span className="trade-tags__chips">
+            {g.values.map((v) => {
+              const tone = toneOf(g.kind, v);
+              return (
+                <span key={v} className={`tag tag--${tone === 'good' ? 'gain' : tone === 'bad' ? 'loss' : 'neutral'}`}>
+                  {v}
+                </span>
+              );
+            })}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
   const [trades, setTrades] = useState<StandardTrade[] | null>(null);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
@@ -55,6 +89,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
       managements: uniq(all.map((t) => optionalText(t, 'management_style'))),
       accounts: uniq(all.map((t) => optionalText(t, 'account'))),
       datasets: [...new Map(all.map((t) => [t.source.datasetId, t.source])).values()],
+      tags: tagGroups(all).flatMap((g) => [...new Set(all.flatMap(g.values))].sort((a, b) => a.localeCompare(b)).map((tag) => ({ key: `${g.key}${TAG_SEP}${tag}`, label: `${g.label}: ${tag}` }))),
     };
   }, [trades]);
 
@@ -68,7 +103,8 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
           (!f.management || optionalText(t, 'management_style') === f.management) &&
           (!f.account || optionalText(t, 'account') === f.account) &&
           (!f.outcome || outcomeOf(t) === f.outcome) &&
-          (!f.dataset || t.source.datasetId === f.dataset),
+          (!f.dataset || t.source.datasetId === f.dataset) &&
+          (!f.tag || tagGroup(f.tag.split(TAG_SEP)[0]).values(t).includes(f.tag.split(TAG_SEP)[1])),
       )
       .sort((a, b) => {
         const av = a[sort.key];
@@ -117,7 +153,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
     );
   }
 
-  const optionalKeys = TRADE_FIELDS.filter((f) => !f.required && !['trade_notes', 'profit_loss_amount', 'management_style'].includes(f.key));
+  const optionalKeys = TRADE_FIELDS.filter((f) => !f.required && !['trade_notes', 'profit_loss_amount', 'management_style', 'behaviour_tags', 'technical_tags', 'positive_tags', 'negative_tags', 'psychology_tags', 'tags'].includes(f.key));
   const hasAmount = trades.some((t) => amountOf(t) !== null);
   const hasManagement = options.managements.length > 0;
 
@@ -170,6 +206,15 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
             )}
             {options.accounts.length > 0 && (
               <FilterSelect label="Account" value={filters.account} options={options.accounts} onChange={(account) => setFilters({ ...filters, account })} />
+            )}
+            {options.tags.length > 0 && (
+              <FilterSelect
+                label="Tag"
+                value={filters.tag}
+                options={options.tags.map((o) => o.key)}
+                labels={Object.fromEntries(options.tags.map((o) => [o.key, o.label]))}
+                onChange={(tag) => setFilters({ ...filters, tag })}
+              />
             )}
             <FilterSelect
               label="Outcome"
@@ -273,6 +318,7 @@ export function JournalPage({ trades: repo }: { trades: TradeRepository }) {
                                 </a>
                               )}
                             </div>
+                            <TradeTags trade={t} />
                             <dl className="trade-detail__fields">
                               {optionalKeys.map((f) => {
                                 const v = formatOptional(t.optional[f.key], f.key);

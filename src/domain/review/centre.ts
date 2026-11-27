@@ -1,7 +1,7 @@
 import { performance, type PerformanceStats } from '../analytics/analytics';
 import { edgeAnalysis, type Segment } from '../analytics/edge';
 import { periodRange, shiftPeriod, type PeriodRange } from '../analytics/review';
-import { psychologyTagsOf } from '../analytics/psychology';
+import { badTagsOf, behaviourTone, goodTagsOf, tagGroups } from '../tags/tags';
 import { dailyFlow, type FlowEntry } from '../flow/flow';
 import { summarise, type TradeSummary } from '../trades/summary';
 import type { StandardTrade } from '../trades/types';
@@ -15,10 +15,6 @@ const utc = (s: string) => new Date(`${s}T00:00:00Z`);
 const round = (n: number, dp = 1) => Math.round(n * 10 ** dp) / 10 ** dp;
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const inRange = (date: string, r: { start: string; end: string }) => date >= r.start && date <= r.end;
-const listOf = (t: StandardTrade, key: string) => {
-  const v = t.optional[key];
-  return Array.isArray(v) ? (v as string[]) : [];
-};
 
 export interface DayRow {
   date: string;
@@ -97,11 +93,11 @@ export interface TradeQuality {
   untagged: { count: number; netR: number };
 }
 
-/** Trades tagged only positively ("good trades") vs trades carrying a negative tag ("mistakes"). */
+/** Trades with only good behaviour ("good trades") vs trades carrying a mistake ("mistakes"). */
 export function tradeQuality(trades: StandardTrade[]): TradeQuality {
   const out: TradeQuality = { good: { count: 0, netR: 0 }, mistakes: { count: 0, netR: 0 }, untagged: { count: 0, netR: 0 } };
   for (const t of trades) {
-    const bucket = listOf(t, 'negative_tags').length ? out.mistakes : listOf(t, 'positive_tags').length ? out.good : out.untagged;
+    const bucket = badTagsOf(t).length ? out.mistakes : goodTagsOf(t).length ? out.good : out.untagged;
     bucket.count++;
     bucket.netR += t.result_r;
   }
@@ -159,13 +155,14 @@ export function subPanels(
       perf: performance(taken),
       avgPerformance: d.avgPerformance,
       avgFlow: d.avgFlow,
-      topWin: top([...logged.flatMap((x) => x.wins), ...taken.flatMap((t) => listOf(t, 'positive_tags'))]),
-      topMistake: top([...logged.flatMap((x) => x.mistakes), ...taken.flatMap((t) => listOf(t, 'negative_tags'))]),
+      topWin: top([...logged.flatMap((x) => x.wins), ...taken.flatMap(goodTagsOf)]),
+      topMistake: top([...logged.flatMap((x) => x.mistakes), ...taken.flatMap(badTagsOf)]),
     };
   });
 }
 
-export type TagKind = 'Trade · positive' | 'Trade · negative' | 'Psychology' | 'Day · win' | 'Day · mistake' | 'Day · emotion';
+/** Where the tag comes from, e.g. "Behaviour", "Technical", a custom column name, or "Day · win". */
+export type TagKind = string;
 export interface RepeatableTag {
   tag: string;
   kind: TagKind;
@@ -175,16 +172,18 @@ export interface RepeatableTag {
   netR: number;
   avgR: number;
   tone: 'positive' | 'negative' | 'neutral';
+  /** Trade tags only: the tag group's key, so the tag can become a focus area. */
+  groupKey?: string;
 }
 
 /** Tags that keep showing up (≥ minCount) and the R attached to them. */
 export function repeatableTags(trades: StandardTrade[], rows: DayRow[], minCount = 3): RepeatableTag[] {
   const out: RepeatableTag[] = [];
-  const add = (kind: TagKind, tone: RepeatableTag['tone'], groups: Map<string, number[]>) => {
+  const add = (kind: TagKind, tone: RepeatableTag['tone'] | ((tag: string) => RepeatableTag['tone']), groups: Map<string, number[]>, groupKey?: string) => {
     for (const [tag, rs] of groups) {
       if (rs.length < minCount) continue;
       const net = rs.reduce((a, b) => a + b, 0);
-      out.push({ tag, kind, count: rs.length, netR: round(net, 2), avgR: round(net / rs.length, 2), tone });
+      out.push({ tag, kind, count: rs.length, netR: round(net, 2), avgR: round(net / rs.length, 2), tone: typeof tone === 'function' ? tone(tag) : tone, ...(groupKey ? { groupKey } : {}) });
     }
   };
   const byTrade = (get: (t: StandardTrade) => string[]) => {
@@ -197,9 +196,8 @@ export function repeatableTags(trades: StandardTrade[], rows: DayRow[], minCount
     for (const row of rows) if (row.review) for (const tag of new Set(get(row.review))) m.set(tag, [...(m.get(tag) ?? []), row.stats.netR]);
     return m;
   };
-  add('Trade · positive', 'positive', byTrade((t) => listOf(t, 'positive_tags')));
-  add('Trade · negative', 'negative', byTrade((t) => listOf(t, 'negative_tags')));
-  add('Psychology', 'neutral', byTrade(psychologyTagsOf));
+  const toneOfBehaviour = (tag: string): RepeatableTag['tone'] => ({ good: 'positive', bad: 'negative', neutral: 'neutral' } as const)[behaviourTone(tag)];
+  for (const g of tagGroups(trades)) add(g.label, g.kind === 'behaviour' ? toneOfBehaviour : 'neutral', byTrade(g.values), g.key);
   add('Day · win', 'positive', byDay((r) => r.wins));
   add('Day · mistake', 'negative', byDay((r) => r.mistakes));
   add('Day · emotion', 'neutral', byDay((r) => r.emotions));
