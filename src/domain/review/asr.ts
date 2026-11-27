@@ -4,6 +4,8 @@ import { psychologyTagsOf } from '../analytics/psychology';
 import type { PeriodRange, ReviewPeriod } from '../analytics/review';
 import { dailyFlow, flowByDayOutcome, flowTagImpact, type FlowEntry } from '../flow/flow';
 import type { StandardTrade } from '../trades/types';
+import { dayRows, discipline, opportunityGaps, patterns, repeatableTags, subPanels, tradeQuality, type DayRow, type Panel } from './centre';
+import type { DailyReview, PlanItem } from './daily';
 
 /**
  * Advanced Self Review (ASR): a provider-neutral document describing one review
@@ -29,7 +31,7 @@ export type AsrBlock =
   /** `image` refers to AsrImage.key; skipped when that image wasn't supplied. */
   | { type: 'image'; image: string; caption: string }
   | { type: 'divider' }
-  | { type: 'todo'; text: string };
+  | { type: 'todo'; text: string; checked?: boolean };
 
 export interface AsrProperties {
   period: 'Weekly' | 'Monthly' | 'Quarterly';
@@ -80,6 +82,13 @@ export interface AsrInput {
   flow?: FlowEntry[];
   /** Images that will be attached (keys of ASR_IMAGES). */
   images?: string[];
+  /** Daily ASR entries (any dates; filtered to the range). */
+  daily?: DailyReview[];
+  /** Commitments / focus areas / objectives for this period, and any already set for the next. */
+  plan?: PlanItem[];
+  nextPlan?: PlanItem[];
+  /** For "today" in elapsed-day calculations (tests). */
+  today?: string;
 }
 
 const PERIOD_NAME: Record<ReviewPeriod, AsrProperties['period']> = { week: 'Weekly', month: 'Monthly', quarter: 'Quarterly' };
@@ -132,6 +141,165 @@ function headline(p: PerformanceStats, noun: string): Rich {
   return parts;
 }
 
+export const PLAN_LABEL: Record<ReviewPeriod, string> = { week: 'Commitments', month: 'Focus areas', quarter: 'Strategic objectives' };
+
+const REFLECTION: Record<ReviewPeriod, string[]> = {
+  week: [
+    'Did my daily performance carry into the week’s result?',
+    'Which commitments did I keep — and what got in the way of the others?',
+    'Best decision of the week, and the mistake that cost the most',
+    'What is my one focus for next week?',
+  ],
+  month: [
+    'Which tags keep repeating — and what do they earn or cost me?',
+    'Where is my biggest opportunity gap, and what closes it?',
+    'Am I improving week to week? What changed?',
+    'What is my focus for next month?',
+  ],
+  quarter: [
+    'What patterns define my edge this quarter?',
+    'Which strategic objectives did I hit, and which slipped?',
+    'What should I stop, start and keep doing?',
+    'What are my objectives for next quarter?',
+  ],
+};
+
+const score = (n: number | null) => (n === null ? '—' : `${n.toFixed(1)}`);
+const dayFmtShort = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
+
+function panelTable(first: string, panels: Panel[]): AsrBlock {
+  return {
+    type: 'table',
+    header: [first, 'Net R', 'Win rate', 'Trades', 'Performance', 'Flow', 'Top win', 'Top mistake'],
+    rows: panels.map((p) => [
+      [span(p.label, { bold: true }), span(` ${p.range.start.slice(5)}–${p.range.end.slice(5)}`, { color: 'gray' })],
+      [span(r(p.perf.count ? p.perf.netR : null), { color: tone(p.perf.netR) })],
+      plain(pct(p.perf.winRate)),
+      plain(String(p.perf.count)),
+      plain(score(p.avgPerformance)),
+      plain(score(p.avgFlow)),
+      plain(p.topWin ?? '—'),
+      plain(p.topMistake ?? '—'),
+    ]),
+  };
+}
+
+function planBlocks(period: ReviewPeriod, items: PlanItem[] | undefined): AsrBlock[] {
+  const list = (items ?? []).filter((i) => i.text.trim());
+  if (!list.length) return [];
+  const kept = list.filter((i) => i.status === 'kept').length;
+  return [
+    { type: 'heading', level: 2, text: `${PLAN_LABEL[period]} this ${NOUN[period]}` },
+    { type: 'paragraph', rich: [span(`${kept} of ${list.length} kept`, { bold: true })] },
+    ...list.map((i): AsrBlock => ({ type: 'todo', text: i.status === 'missed' ? `${i.text} (missed)` : i.text, checked: i.status === 'kept' })),
+  ];
+}
+
+function disciplineBlocks(rows: DayRow[], taken: StandardTrade[], today?: string): AsrBlock[] {
+  const d = discipline(rows, today);
+  const q = tradeQuality(taken);
+  const items: Rich[] = [[span('Daily ASRs logged: '), span(`${d.logged} of ${d.days} days`, { bold: true })]];
+  if (d.cleanRate !== null) items.push([span('Days without a mistake: '), span(pct(d.cleanRate), { bold: true })]);
+  if (d.avgPerformance !== null) items.push([span('Average performance score: '), span(`${score(d.avgPerformance)} / 10`, { bold: true })]);
+  if (d.performanceOnGreen !== null || d.performanceOnRed !== null)
+    items.push([
+      span('Performance score on green days '),
+      span(score(d.performanceOnGreen), { bold: true, color: 'green' }),
+      span(' vs red days '),
+      span(score(d.performanceOnRed), { bold: true, color: 'red' }),
+    ]);
+  items.push([span('Good trades: '), span(`${q.good.count} · ${r(q.good.netR)}`, { bold: true, color: tone(q.good.netR) })]);
+  items.push([span('Trades with mistakes: '), span(`${q.mistakes.count} · ${r(q.mistakes.netR)}`, { bold: true, color: tone(q.mistakes.netR) })]);
+  return [{ type: 'heading', level: 2, text: 'Discipline' }, { type: 'bullets', items }];
+}
+
+function repeatableBlocks(taken: StandardTrade[], rows: DayRow[]): AsrBlock[] {
+  const tags = repeatableTags(taken, rows).slice(0, 12);
+  if (!tags.length) return [];
+  return [
+    { type: 'heading', level: 2, text: 'Repeatable tags' },
+    {
+      type: 'table',
+      header: ['Tag', 'Type', 'Count', 'Avg R', 'Net R'],
+      rows: tags.map((t) => [
+        [span(t.tag, { bold: true })],
+        plain(t.kind),
+        plain(String(t.count)),
+        [span(r(t.avgR), { color: tone(t.avgR) })],
+        [span(r(t.netR), { color: tone(t.netR) })],
+      ]),
+    },
+  ];
+}
+
+function periodSections(input: AsrInput): AsrBlock[] {
+  const { period, range, taken, missed } = input;
+  const rows = dayRows(range, taken, input.daily ?? [], input.flow ?? []);
+  const blocks: AsrBlock[] = [];
+
+  if (period === 'week') {
+    blocks.push({ type: 'heading', level: 2, text: 'Daily summaries' });
+    blocks.push({
+      type: 'table',
+      header: ['Day', 'Net R', 'Trades', 'Performance', 'Flow', 'Wins', 'Mistakes'],
+      rows: rows.map((d) => [
+        [span(dayFmtShort.format(new Date(`${d.date}T00:00:00Z`)), { bold: true })],
+        [span(d.trades.length ? r(d.stats.netR) : '—', { color: tone(d.stats.netR) })],
+        plain(String(d.trades.length)),
+        plain(score(d.performanceScore)),
+        plain(score(d.flowScore)),
+        plain(d.review?.wins.join(', ') || '—'),
+        plain(d.review?.mistakes.join(', ') || '—'),
+      ]),
+    });
+    const lessons = rows.filter((d) => d.review?.lesson);
+    if (lessons.length) {
+      blocks.push({ type: 'heading', level: 3, text: 'Lessons from the week' });
+      blocks.push({ type: 'bullets', items: lessons.map((d) => [span(`${dayFmtShort.format(new Date(`${d.date}T00:00:00Z`))}: `, { bold: true }), span(d.review!.lesson!)]) });
+    }
+    blocks.push(...disciplineBlocks(rows, taken, input.today));
+    blocks.push(...planBlocks(period, input.plan));
+  }
+
+  if (period === 'month' || period === 'quarter') {
+    const panels = subPanels(period, range, taken, input.daily ?? [], input.flow ?? [], input.today);
+    blocks.push({ type: 'heading', level: 2, text: period === 'month' ? 'Weeks' : 'Months' });
+    blocks.push(panelTable(period === 'month' ? 'Week' : 'Month', panels));
+    blocks.push(...disciplineBlocks(rows, taken, input.today));
+  }
+
+  if (period === 'month') {
+    blocks.push(...repeatableBlocks(taken, rows));
+    const g = opportunityGaps(taken, missed, rows, input.today);
+    const items: Rich[] = [];
+    if (g.missedWinners) items.push([span('Missed winners: '), span(`${g.missedWinners} trades · ${r(g.missedWinnersR)}`, { bold: true, color: 'green' }), span(' left on the table')]);
+    if (g.mistakeTrades) items.push([span('Trades with mistakes: '), span(`${g.mistakeTrades} · ${r(g.mistakeTradesR)}`, { bold: true, color: tone(g.mistakeTradesR) })]);
+    if (g.costliestMistake) items.push([span('Costliest habit: '), span(g.costliestMistake.tag, { bold: true }), span(` · ${r(g.costliestMistake.netR)} over ${g.costliestMistake.count}`)]);
+    for (const leak of g.leaks)
+      items.push([span('Leak: '), span(leak.factors.map((f) => f.value).join(' + '), { bold: true }), span(` · ${leak.stats.count} trades · ${r(leak.stats.avgR)} avg`, { color: 'red' })]);
+    if (g.unloggedDays) items.push([span(`${g.unloggedDays} trading day${g.unloggedDays === 1 ? '' : 's'} without a Daily ASR`, { color: 'gray' })]);
+    if (items.length) blocks.push({ type: 'heading', level: 2, text: 'Opportunity gaps' }, { type: 'bullets', items });
+    blocks.push(...planBlocks(period, input.plan));
+  }
+
+  if (period === 'quarter') {
+    const p = patterns(taken);
+    if (p.edge.length || p.needsWork.length) {
+      blocks.push({ type: 'heading', level: 2, text: 'Patterns' });
+      const seg = (x: (typeof p.edge)[number]): Rich => [
+        span(x.factors.map((f) => f.value).join(' + '), { bold: true }),
+        span(` · ${x.stats.count} trades · `),
+        span(`${r(x.stats.avgR)} avg`, { color: tone(x.stats.avgR) }),
+      ];
+      if (p.edge.length) blocks.push({ type: 'heading', level: 3, text: 'Where your edge is' }, { type: 'bullets', items: p.edge.map(seg) });
+      if (p.needsWork.length) blocks.push({ type: 'heading', level: 3, text: 'Needs work' }, { type: 'bullets', items: p.needsWork.map(seg) });
+    }
+    blocks.push(...repeatableBlocks(taken, rows));
+    blocks.push(...planBlocks(period, input.plan));
+  }
+  return blocks;
+}
+
 export function buildAsr(input: AsrInput): AsrDocument {
   const { period, range, taken, prevTaken, missed } = input;
   const noun = NOUN[period];
@@ -161,6 +329,8 @@ export function buildAsr(input: AsrInput): AsrDocument {
       scoreRow('Streaks', `${perf.longestWinStreak}W / ${perf.longestLossStreak}L`, prevOr(`${prev.longestWinStreak}W / ${prev.longestLossStreak}L`)),
     ],
   });
+
+  blocks.push(...periodSections(input));
 
   // Charts
   if (images.has('equity') || images.has('missed')) {
@@ -255,17 +425,14 @@ export function buildAsr(input: AsrInput): AsrDocument {
   // Reflection prompts
   blocks.push({ type: 'divider' });
   blocks.push({ type: 'heading', level: 2, text: 'Reflection' });
-  for (const q of [
-    `What did I do well this ${noun}?`,
-    'Where did I break my rules — and why?',
-    'What does the data say I should do more of, or stop?',
-    `What is my one focus for next ${noun}?`,
-  ]) {
+  for (const q of REFLECTION[period]) {
     blocks.push({ type: 'heading', level: 3, text: q });
     blocks.push({ type: 'paragraph', rich: [] });
   }
-  blocks.push({ type: 'heading', level: 3, text: `Actions for next ${noun}` });
-  blocks.push({ type: 'todo', text: '' });
+  blocks.push({ type: 'heading', level: 3, text: `${PLAN_LABEL[period]} for next ${noun}` });
+  const next = (input.nextPlan ?? []).filter((i) => i.text.trim());
+  if (next.length) for (const i of next) blocks.push({ type: 'todo', text: i.text });
+  else blocks.push({ type: 'todo', text: '' });
 
   return {
     title: `${PERIOD_NAME[period]} review · ${range.label}`,

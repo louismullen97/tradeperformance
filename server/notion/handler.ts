@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { NotionApiConnector } from './apiConnector';
 import { createAsrPage, type CreateAsrRequest } from './asr';
 import { NotionApiError, NotionClient } from './client';
+import { upsertDailyPage, type SyncDailyRequest } from './daily';
 
 /**
  * `/api/notion/*` routes. Framework-agnostic (plain Node req/res) so it can be
@@ -13,6 +14,7 @@ import { NotionApiError, NotionClient } from './client';
  *   GET /data-sources/:id/records    → SourceRecord[]
  *   GET /data-sources/:id/count      → { count }
  *   POST /reviews                    → { id, url }  (creates an ASR page; needs Insert content)
+ *   POST /daily                      → { id, url, created }  (creates/updates a Daily ASR page; needs Insert + Update content)
  */
 
 export interface NotionApiConfig {
@@ -93,9 +95,14 @@ function isAsrRequest(b: unknown): b is CreateAsrRequest {
   return !!r && typeof r.dataSourceId === 'string' && /^[0-9a-fA-F-]{32,36}$/.test(r.dataSourceId) && !!r.document && Array.isArray(r.document.blocks) && Array.isArray(r.images);
 }
 
+function isDailyRequest(b: unknown): b is SyncDailyRequest {
+  const r = b as SyncDailyRequest;
+  return !!r && typeof r.dataSourceId === 'string' && /^[0-9a-fA-F-]{32,36}$/.test(r.dataSourceId) && !!r.entry && /^\d{4}-\d{2}-\d{2}$/.test(r.entry.date) && Array.isArray(r.entry.wins);
+}
+
 export async function handleNotionApi(req: IncomingMessage, res: ServerResponse, config: NotionApiConfig): Promise<void> {
   const path = new URL(req.url ?? '/', 'http://local').pathname.replace(/\/+$/, '') || '/';
-  const isWrite = req.method === 'POST' && path === '/reviews';
+  const isWrite = req.method === 'POST' && (path === '/reviews' || path === '/daily');
   if (req.method !== 'GET' && !isWrite) return send(res, 405, { error: { code: 'method_not_allowed', message: 'Method not allowed' } });
 
   if (!config.token) {
@@ -107,6 +114,10 @@ export async function handleNotionApi(req: IncomingMessage, res: ServerResponse,
   try {
     if (isWrite) {
       const body = await readJson<unknown>(req);
+      if (path === '/daily') {
+        if (!isDailyRequest(body)) return send(res, 400, { error: { code: 'bad_request', message: 'Expected { dataSourceId, entry }.' } });
+        return send(res, 200, await upsertDailyPage(client, body));
+      }
       if (!isAsrRequest(body)) return send(res, 400, { error: { code: 'bad_request', message: 'Expected { dataSourceId, document, images }.' } });
       return send(res, 201, await createAsrPage(client, body));
     }
@@ -129,7 +140,7 @@ export async function handleNotionApi(req: IncomingMessage, res: ServerResponse,
       err = {
         status: 403,
         code: 'no_write_access',
-        message: 'Notion refused to create the page. In the Notion Developer portal, open the Tradelens connection → Capabilities → enable "Insert content", then try again.',
+        message: 'Notion refused to save the page. In the Notion Developer portal, open the Tradelens connection → Capabilities → enable "Insert content" and "Update content", then try again.',
       };
     if (path === '/status') return send(res, 200, { mode: 'error', error: { code: err.code, message: err.message } });
     return send(res, err.status, { error: { code: err.code, message: err.message } });

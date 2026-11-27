@@ -4,7 +4,9 @@ import { getDimension } from '../../domain/analytics/dimensions';
 import { psychologyTagsOf } from '../../domain/analytics/psychology';
 import { periodRange, shiftPeriod, PERIOD_NOUN, type ReviewPeriod } from '../../domain/analytics/review';
 import type { FlowEntry, FlowRepository } from '../../domain/flow/flow';
-import { buildAsr } from '../../domain/review/asr';
+import { buildAsr, PLAN_LABEL } from '../../domain/review/asr';
+import { dayRows, discipline, opportunityGaps, patterns, repeatableTags, subPanels, tradeQuality } from '../../domain/review/centre';
+import { planKey, type DailyRepository, type DailyReview, type PlanItem, type PlanRepository } from '../../domain/review/daily';
 import type { DataSourceConnector } from '../../domain/source/types';
 import type { TradeRepository } from '../../domain/trades/repository';
 import { isMissed } from '../../domain/trades/status';
@@ -15,6 +17,8 @@ import { PageHeader } from '../../ui/PageHeader';
 import { fmtDate, fmtPct, fmtR, fmtWinRate, Icon, signTone, Stat } from '../../ui/primitives';
 import { BreakdownTable } from '../performance/BreakdownTable';
 import { AsrDialog, type AsrChart } from './AsrDialog';
+import { DailyReviewPage } from './DailyReviewPage';
+import { DaySummaries, DisciplinePanel, GapsPanel, PatternsPanel, PlanPanel, RepeatableTagsPanel, ScoreTrend, SubPanels } from './CentreSections';
 
 export interface ReviewPublishing {
   live: boolean;
@@ -22,7 +26,10 @@ export interface ReviewPublishing {
   apiBase: string;
 }
 
+export type ReviewTab = 'day' | ReviewPeriod;
+
 const TABS = [
+  { key: 'day', label: 'Daily', href: '#/review/day' },
   { key: 'week', label: 'Weekly', href: '#/review/week' },
   { key: 'month', label: 'Monthly', href: '#/review/month' },
   { key: 'quarter', label: 'Quarterly', href: '#/review/quarter' },
@@ -107,17 +114,55 @@ function TagList({ title, items, empty }: { title: string; items: [string, numbe
 
 const rFormat = (v: number) => (v === 0 ? '0' : `${v > 0 ? '+' : ''}${Number(v.toFixed(2))}R`);
 
-export function ReviewPage({
+const HEADER = {
+  title: 'Review Centre',
+  description: 'A single home for your review process — daily ASRs feed your weekly, monthly and quarterly reviews.',
+};
+const PERIOD_ADJ: Record<ReviewPeriod, string> = { week: 'weekly', month: 'monthly', quarter: 'quarterly' };
+const PLAN_HINT: Record<ReviewPeriod, string> = {
+  week: 'What you committed to this week. Click a status to mark it kept or missed.',
+  month: 'The areas you are working on this month.',
+  quarter: 'Your strategic objectives for the quarter.',
+};
+
+export function ReviewPage(props: {
+  trades: TradeRepository;
+  period: ReviewTab;
+  flow?: FlowRepository;
+  daily: DailyRepository;
+  plans: PlanRepository;
+  publishing: ReviewPublishing;
+  date?: string;
+}) {
+  if (props.period === 'day') {
+    return (
+      <div className="page">
+        <PageHeader title={HEADER.title} description={HEADER.description} tabs={TABS} activeTab="day" />
+        <DailyReviewPage trades={props.trades} flow={props.flow} daily={props.daily} publishing={props.publishing} date={props.date} />
+      </div>
+    );
+  }
+  return <PeriodReview {...props} period={props.period} />;
+}
+
+function PeriodReview({
   trades: repo,
   period,
   flow: flowRepo,
+  daily: dailyRepo,
+  plans,
   publishing,
 }: {
   trades: TradeRepository;
   period: ReviewPeriod;
   flow?: FlowRepository;
+  daily: DailyRepository;
+  plans: PlanRepository;
   publishing: ReviewPublishing;
 }) {
+  const [reviews, setReviews] = useState<DailyReview[]>([]);
+  const [planVersion, setPlanVersion] = useState(0);
+  useEffect(() => void dailyRepo.list().then(setReviews), [dailyRepo]);
   const [all, setAll] = useState<StandardTrade[] | null>(null);
   const [anchor, setAnchor] = useState<string | null>(null);
   const [flow, setFlow] = useState<FlowEntry[]>([]);
@@ -158,7 +203,25 @@ export function ReviewPage({
     ];
   }, [taken, missed]);
 
+  const today = todayIso();
+  const rows = useMemo(() => (range ? dayRows(range, taken, reviews, flow) : []), [range?.start, taken, reviews, flow]); // eslint-disable-line react-hooks/exhaustive-deps
+  const panels = useMemo(
+    () => (range && period !== 'week' ? subPanels(period, range, all?.filter((t) => !isMissed(t)) ?? [], reviews, flow, today) : []),
+    [range?.start, all, reviews, flow, period], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   if (!all || !range || !anchor) return null;
+  const disc = discipline(rows, today);
+  const quality = tradeQuality(taken);
+  const key = planKey(period, range.start);
+  const nextKey = planKey(period, periodRange(period, shiftPeriod(period, anchor, 1)).start);
+  void planVersion;
+  const planItems = plans.get(key);
+  const nextItems = plans.get(nextKey);
+  const setPlan = (k: string) => (items: PlanItem[]) => {
+    plans.set(k, items);
+    setPlanVersion((v) => v + 1);
+  };
   const hasPrev = prevTaken.length > 0;
   const sorted = [...taken].sort((a, b) => b.result_r - a.result_r);
   const best = sorted.filter((t) => t.result_r > 0).slice(0, 3);
@@ -176,7 +239,7 @@ export function ReviewPage({
 
   return (
     <div className="page">
-      <PageHeader title="Review" description={`A structured look back at each ${noun}: what worked, what didn't, and what to carry forward.`} tabs={TABS} activeTab={period} />
+      <PageHeader title={HEADER.title} description={HEADER.description} tabs={TABS} activeTab={period} />
 
       <div className="period-nav">
         <button className="icon-btn" aria-label={`Previous ${noun}`} onClick={() => setAnchor(shiftPeriod(period, anchor, -1))}>
@@ -194,7 +257,7 @@ export function ReviewPage({
         {(taken.length > 0 || missed.length > 0) && (
           <div className="period-nav__actions">
             <button className="btn btn--sm btn--primary" onClick={() => setAsrOpen(true)}>
-              <Icon name="send" size={14} /> Create ASR in Notion
+              <Icon name="send" size={14} /> Create {PERIOD_ADJ[period]} ASR
             </button>
           </div>
         )}
@@ -208,7 +271,7 @@ export function ReviewPage({
         apiBase={publishing.apiBase}
         periodLabel={range.label}
         charts={asrCharts}
-        build={(images) => buildAsr({ period, range, taken, prevTaken, missed, flow, images })}
+        build={(images) => buildAsr({ period, range, taken, prevTaken, missed, flow, images, daily: reviews, plan: planItems, nextPlan: nextItems, today })}
       />
 
       {taken.length === 0 && missed.length === 0 ? (
@@ -230,6 +293,10 @@ export function ReviewPage({
             <Stat label="Net P/L" value={fmtPct(perf.netPl)} tone={perf.netPl > 0 ? 'positive' : perf.netPl < 0 ? 'negative' : undefined} foot={`Expectancy ${fmtR(perf.avgR)}`} />
             <Stat label="Max drawdown" value={perf.maxDrawdownR ? `\u2212${perf.maxDrawdownR.toFixed(2)}R` : '0R'} tone={perf.maxDrawdownR ? 'negative' : undefined} foot={`Streaks ${perf.longestWinStreak}W / ${perf.longestLossStreak}L`} />
           </div>
+
+          {period === 'week' && <DaySummaries rows={rows} today={today} />}
+          {period === 'month' && <SubPanels title="Weeks" panels={panels} />}
+          {period === 'quarter' && <SubPanels title="Months" panels={panels} />}
 
           <section className="panel">
             <header className="panel__head">
@@ -263,6 +330,12 @@ export function ReviewPage({
               </div>
             </section>
           )}
+
+          <DisciplinePanel d={disc} q={quality} />
+          {period !== 'week' && <ScoreTrend rows={rows} />}
+          {period === 'quarter' && <PatternsPanel {...patterns(taken)} />}
+          {period !== 'week' && <RepeatableTagsPanel tags={repeatableTags(taken, rows)} />}
+          {period === 'month' && <GapsPanel g={opportunityGaps(taken, missed, rows, today)} />}
 
           <div className="grid-2">
             <TradeList title="Best trades" trades={best} />
@@ -312,6 +385,16 @@ export function ReviewPage({
               </div>
             )}
           </section>
+
+          <PlanPanel
+            title={`${PLAN_LABEL[period]} this ${noun}`}
+            hint={PLAN_HINT[period]}
+            items={planItems}
+            onChange={setPlan(key)}
+            nextTitle={`${PLAN_LABEL[period]} for next ${noun}`}
+            nextItems={nextItems}
+            onNextChange={setPlan(nextKey)}
+          />
         </>
       )}
     </div>

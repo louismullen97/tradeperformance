@@ -62,7 +62,7 @@ export function toNotionBlocks(blocks: AsrBlock[], uploads: Record<string, strin
         out.push({ type: 'divider', divider: {} });
         break;
       case 'todo':
-        out.push({ type: 'to_do', to_do: { rich_text: textOnly(b.text), checked: false } });
+        out.push({ type: 'to_do', to_do: { rich_text: textOnly(b.text), checked: !!b.checked } });
         break;
     }
   }

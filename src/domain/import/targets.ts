@@ -1,5 +1,6 @@
 import { FLOW_FIELDS, type FlowEntry, type FlowRepository } from '../flow/flow';
 import type { FieldDefinition } from '../fields/types';
+import { DAILY_FIELDS, type DailyRepository, type DailyReview } from '../review/daily';
 import { TRADE_FIELDS } from '../fields/registry';
 import type { MappingConfig } from '../mapping/types';
 import type { SourceDataset } from '../source/types';
@@ -11,7 +12,7 @@ import { buildImportBatch, canInclude, defaultDecision, type RecordDecision, typ
  * What an import produces. The same mapping/validation pipeline feeds every
  * target; only the field registry, preview and final write differ.
  */
-export type ImportTargetKey = 'trades' | 'flow';
+export type ImportTargetKey = 'trades' | 'flow' | 'daily';
 
 export interface PreviewColumn {
   key: string;
@@ -114,6 +115,63 @@ export function createFlowTarget(repo: FlowRepository): ImportTarget {
         if (decision === 'exclude') {
           skipped.push({ recordId: r.record.id, recordUrl: r.record.url, status: r.status, reason: canInclude(r) ? 'user_excluded' : 'invalid', issues: r.issues.map((i) => i.message) });
         } else entries.push(flowEntryFrom(r, dataset));
+      }
+      await repo.upsertMany(entries);
+      return {
+        id: `imp_${Date.now().toString(36)}`,
+        createdAt: new Date().toISOString(),
+        imported: entries.length,
+        skippedInvalid: skipped.filter((s) => s.reason === 'invalid').length,
+        skippedByUser: skipped.filter((s) => s.reason === 'user_excluded').length,
+        total: report.records.length,
+        skipped,
+        sample: entries[0],
+      };
+    },
+  };
+}
+
+const textOrNull = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+const numOrNull = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+export function dailyReviewFrom(r: RecordValidation, dataset: SourceDataset): DailyReview {
+  const v = r.values;
+  return {
+    date: v.date as string,
+    performanceScore: numOrNull(v.performance_score),
+    flowScore: numOrNull(v.flow_score),
+    wins: strings(v.wins),
+    mistakes: strings(v.mistakes),
+    emotions: strings(v.emotions),
+    observations: textOrNull(v.observations),
+    decisions: textOrNull(v.decisions),
+    lesson: textOrNull(v.lesson),
+    updatedAt: r.record.lastEditedTime ?? new Date().toISOString(),
+    source: { kind: dataset.kind, datasetId: dataset.id, datasetName: dataset.name, recordId: r.record.id, recordUrl: r.record.url },
+  };
+}
+
+export function createDailyTarget(repo: DailyRepository): ImportTarget {
+  return {
+    key: 'daily',
+    label: 'Daily ASR',
+    description: 'One review per trading day: performance and flow scores, wins, mistakes, emotions and notes.',
+    noun: 'daily reviews',
+    fields: DAILY_FIELDS,
+    preview: [
+      { key: 'date', label: 'Date', format: 'date' },
+      { key: 'performance_score', label: 'Performance', format: 'number' },
+      { key: 'flow_score', label: 'Flow', format: 'number' },
+    ],
+    destination: { label: 'Open Review Centre', href: '#/review/day' },
+    async commit(report, decisions, dataset) {
+      const entries: DailyReview[] = [];
+      const skipped: SkippedRecord[] = [];
+      for (const r of report.records) {
+        const decision = canInclude(r) ? (decisions[r.record.id] ?? defaultDecision(r)) : 'exclude';
+        if (decision === 'exclude') {
+          skipped.push({ recordId: r.record.id, recordUrl: r.record.url, status: r.status, reason: canInclude(r) ? 'user_excluded' : 'invalid', issues: r.issues.map((i) => i.message) });
+        } else entries.push(dailyReviewFrom(r, dataset));
       }
       await repo.upsertMany(entries);
       return {

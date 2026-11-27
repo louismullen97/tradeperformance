@@ -38,7 +38,8 @@ describe('buildAsr', () => {
     expect(doc.blocks.filter((b) => b.type === 'image').map((b) => (b as { image: string }).image)).toEqual(['equity', 'missed']);
   });
   it('links trades back to their Notion pages', () => {
-    const best = doc.blocks.find((b) => b.type === 'bullets')!;
+    const at = doc.blocks.findIndex((b) => b.type === 'heading' && b.text === 'Best');
+    const best = doc.blocks[at + 1];
     expect(best.type === 'bullets' && best.items[0][0]).toMatchObject({ text: 'GBPUSD', link: 'https://notion.so/a3' });
   });
   it('omits the chart section when no images are attached', () => {

@@ -10,7 +10,7 @@ const NAV: { section: string; items: { label: string; icon: IconName; view?: Vie
       { label: 'Dashboard', icon: 'grid', view: 'overview' },
       { label: 'Journal', icon: 'book', view: 'journal' },
       { label: 'Performance', icon: 'chart', view: 'performance' },
-      { label: 'Review', icon: 'refresh', view: 'review' },
+      { label: 'Review Centre', icon: 'refresh', view: 'review' },
     ],
   },
   {
@@ -33,7 +33,7 @@ const CRUMBS: Record<View, string[]> = {
   overview: ['Dashboard'],
   journal: ['Trading', 'Journal'],
   performance: ['Trading', 'Performance'],
-  review: ['Trading', 'Review'],
+  review: ['Trading', 'Review Centre'],
   psychology: ['Behaviour', 'Psychology'],
   missed: ['Behaviour', 'Missed trades'],
   imports: ['Data', 'Imports'],
